@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AgroTrack v0.6</title>
+<style>
+:root{--bg:#f4f7f2;--card:#fff;--text:#17301f;--muted:#718078;--green:#216b3a;--green2:#e8f3e8;--line:#dfe7df;--red:#a33}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+.app{max-width:760px;margin:auto;padding:18px 14px 92px}header{display:flex;justify-content:space-between;gap:12px;align-items:center}
+h1{font-size:25px;margin:0}.sub,small{color:var(--muted)}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 4px 15px #00000008}
+select,input{width:100%;padding:12px;border:1px solid #cbd8cc;border-radius:11px;background:#fff;font-size:16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.metric{background:#f7faf6;padding:13px;border-radius:14px}.metric span{font-size:12px;color:var(--muted)}.metric b{display:block;font-size:19px;margin-top:3px}
+.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}button{border:0;border-radius:12px;padding:12px 8px;font-weight:750;cursor:pointer}.primary{background:var(--green);color:#fff}.soft{background:var(--green2);color:var(--green)}.danger{background:#f7eaea;color:var(--red)}
+.entry{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #edf0ed}.entry:last-child{border:0}.pos{color:var(--green)}.neg{color:var(--red)}
+.pill{display:inline-block;padding:5px 9px;border-radius:99px;background:var(--green2);color:var(--green);font-size:12px;font-weight:700}
+dialog{width:min(92vw,520px);border:0;border-radius:18px;padding:0;box-shadow:0 20px 60px #0004}dialog::backdrop{background:#0006}.modal{padding:18px}.modal h2{margin-top:0}.modal label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.modal-actions{display:flex;gap:8px;margin-top:15px}.modal-actions button{flex:1}
+.tabs{display:flex;gap:7px;overflow:auto;padding-bottom:2px}.tab{white-space:nowrap}.empty{text-align:center;color:var(--muted);padding:20px}
+footer{position:fixed;bottom:0;left:0;right:0;background:#ffffffed;border-top:1px solid var(--line);backdrop-filter:blur(8px)}footer div{max-width:760px;margin:auto;padding:10px 14px;text-align:center;font-size:12px;color:var(--muted)}
+
+.analysis-row{display:grid;grid-template-columns:1.3fr repeat(4,1fr);gap:6px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0ed;font-size:12px}
+.analysis-row.head{font-weight:700;color:var(--muted);font-size:11px}
+.analysis-row:last-child{border-bottom:0}.cropname{font-weight:750;font-size:13px}.scroll{overflow-x:auto}.analysis-wrap{min-width:590px}
+.period-total{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.period-total .metric b{font-size:17px}
+@media(max-width:520px){.period-total{grid-template-columns:1fr 1fr}}
+.entry-actions{display:flex;gap:5px;align-items:center}.mini{padding:7px 8px;border-radius:9px;font-size:13px}.entry-main{flex:1}
+.listening{animation:pulse 1s infinite}@keyframes pulse{50%{opacity:.55}}
+.voice-ok{background:#edf7ed;border-radius:10px;padding:9px;margin-top:8px}
+</style></head>
+<body>
+<div class="app">
+<header><div><h1>🌱 AgroTrack</h1><div class="sub">Ψηφιακή παρακολούθηση παραγωγής</div></div><span class="pill">v0.6</span></header>
+
+<section class="card">
+<div class="row">
+<div><small>Καλλιεργητική περίοδος</small><select id="season" onchange="changeSeason()"></select></div>
+<div><small>Θερμοκήπιο</small><select id="greenhouse" onchange="render()"></select></div>
+</div>
+<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+<button class="soft" onclick="openGreenhouse()">+ Θερμοκήπιο</button>
+<button class="soft" onclick="openSeason()">+ Περίοδος</button>
+<button class="danger" onclick="deleteGreenhouse()">🗑️ Θερμοκήπιο</button>
+<button class="danger" onclick="deleteSeason()">🗑️ Περίοδος</button>
+</div>
+</section>
+
+<section class="card">
+<div id="ghInfo" class="sub"></div>
+<div class="grid" style="margin-top:10px">
+<div class="metric"><span>Παραγωγή</span><b id="kg">0 kg</b></div>
+<div class="metric"><span>Πωληθέντα</span><b id="sold">0 kg</b></div>
+<div class="metric"><span>Έσοδα</span><b id="income">0 €</b></div>
+<div class="metric"><span>Έξοδα</span><b id="expense">0 €</b></div>
+<div class="metric"><span>Αποτέλεσμα</span><b id="profit">0 €</b></div>
+<div class="metric"><span>Κόστος/kg</span><b id="costkg">—</b></div>
+</div>
+</section>
+
+<section class="card">
+<h3 style="margin:0 0 5px">🎙️ Φωνητική καταχώρηση</h3>
+<div class="sub">Πες π.χ. «Σήμερα μάζεψα 480 κιλά» ή «Έδωσα 320 ευρώ για λίπασμα».</div>
+<button id="voiceBtn" class="primary" style="width:100%;margin-top:12px" onclick="startVoice()">🎙️ Πάτησε και μίλησε</button>
+<div id="voiceStatus" class="sub" style="margin-top:9px"></div>
+<div id="voiceText" style="margin-top:8px;font-weight:700"></div>
+</section>
+
+<section class="card"><h3 style="margin-top:0">Γρήγορη καταχώρηση</h3>
+<div class="actions"><button class="soft" onclick="openEntry('expense')">💶<br>Έξοδο</button><button class="soft" onclick="openEntry('harvest')">📦<br>Συγκομιδή</button><button class="primary" onclick="openEntry('sale')">💰<br>Πώληση</button></div></section>
+
+<section class="card">
+<h3 style="margin:0 0 4px">📊 Ανάλυση καλλιεργειών</h3>
+<div class="sub">Σύνολα για την επιλεγμένη καλλιεργητική περίοδο</div>
+<div class="period-total" style="margin-top:10px">
+<div class="metric"><span>Συνολικά έσοδα</span><b id="periodIncome">0 €</b></div>
+<div class="metric"><span>Συνολικά έξοδα</span><b id="periodExpense">0 €</b></div>
+<div class="metric"><span>Συνολικό αποτέλεσμα</span><b id="periodProfit">0 €</b></div>
+</div>
+<div class="scroll" style="margin-top:12px"><div class="analysis-wrap">
+<div class="analysis-row head"><div>Καλλιέργεια</div><div>Παραγωγή</div><div>Έσοδα</div><div>Έξοδα</div><div>Αποτέλεσμα</div></div>
+<div id="cropAnalysis"></div>
+</div></div>
+<div class="sub" style="margin-top:9px">Το κόστος/kg εμφανίζεται κάτω από κάθε καλλιέργεια.</div>
+</section>
+
+<section class="card"><h3 style="margin:0 0 8px">Κινήσεις</h3><div class="tabs">
+<button class="soft tab" onclick="setFilter('all')">Όλες</button><button class="soft tab" onclick="setFilter('expense')">Έξοδα</button><button class="soft tab" onclick="setFilter('harvest')">Συγκομιδές</button><button class="soft tab" onclick="setFilter('sale')">Πωλήσεις</button></div>
+<div id="entries"></div></section>
+</div>
+
+<dialog id="dlg"><form class="modal" id="entryForm"><h2 id="entryTitle"></h2><input type="hidden" id="entryType"><label>Ημερομηνία</label><input id="entryDate" type="date" required><div id="dynamic"></div><label>Σημείωση</label><input id="note" placeholder="Προαιρετικά"><div class="modal-actions"><button type="button" class="soft" onclick="dlg.close()">Άκυρο</button><button class="primary">Αποθήκευση</button></div></form></dialog>
+
+<dialog id="ghDlg"><form class="modal" id="ghForm"><h2>Νέο θερμοκήπιο</h2><label>Όνομα</label><input id="ghName" placeholder="π.χ. Θερμοκήπιο 2" required><label>Έκταση (στρέμματα)</label><input id="ghArea" type="number" step=".1" min=".1" required><label>Καλλιέργεια</label>
+<select id="ghCrop" required>
+<option value="Αγγούρι">🥒 Αγγούρι</option>
+<option value="Ντομάτα">🍅 Ντομάτα</option>
+<option value="Πιπεριά">🌶️ Πιπεριά</option>
+<option value="Μελιτζάνα">🍆 Μελιτζάνα</option>
+<option value="Κολοκύθι">🥬 Κολοκύθι</option>
+<option value="Φασόλι">🫘 Φασόλι</option>
+<option value="Καρπούζι">🍉 Καρπούζι</option>
+<option value="Πεπόνι">🍈 Πεπόνι</option>
+<option value="Ελιά">🫒 Ελιά</option>
+<option value="Αμπέλι">🍇 Αμπέλι</option>
+<option value="Πορτοκάλι">🍊 Πορτοκάλι</option>
+<option value="Λεμόνι">🍋 Λεμόνι</option>
+<option value="Πατάτα">🥔 Πατάτα</option>
+<option value="Άλλη">🌱 Άλλη καλλιέργεια</option>
+</select>
+<div id="customCropWrap" style="display:none">
+<label>Όνομα καλλιέργειας</label>
+<input id="customCrop" placeholder="π.χ. Αβοκάντο">
+</div><div class="modal-actions"><button type="button" class="soft" onclick="ghDlg.close()">Άκυρο</button><button class="primary">Δημιουργία</button></div></form></dialog>
+
+<dialog id="seasonDlg"><form class="modal" id="seasonForm"><h2>Νέα περίοδος</h2><label>Όνομα περιόδου</label><input id="seasonName" placeholder="π.χ. 2027–28" required><div class="modal-actions"><button type="button" class="soft" onclick="seasonDlg.close()">Άκυρο</button><button class="primary">Δημιουργία</button></div></form></dialog>
+
+<footer><div>AgroTrack v0.6 • Φωνητική καταχώρηση • Τοπική αποθήκευση</div></footer>
+<script>
+const KEY='agrotrack-v02';
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{
+ seasons:[{id:'s1',name:'2026–27'}],
+ greenhouses:[{id:'g1',seasonId:'s1',name:'Θερμοκήπιο 1',area:2.5,crop:'Αγγούρι'}],
+ entries:[
+ {id:1,seasonId:'s1',greenhouseId:'g1',type:'expense',date:'2026-09-20',amount:420,category:'Λίπασμα',note:'Βασική λίπανση'},
+ {id:2,seasonId:'s1',greenhouseId:'g1',type:'harvest',date:'2026-09-22',kg:620,note:'Πρωινή συγκομιδή'},
+ {id:3,seasonId:'s1',greenhouseId:'g1',type:'sale',date:'2026-09-22',kg:500,price:1.12,note:'Τοπικός αγοραστής'}]};
+let filter='all'; let editingId=null;
+const $=s=>document.querySelector(s), euro=n=>new Intl.NumberFormat('el-GR',{style:'currency',currency:'EUR'}).format(n), num=(n,d=1)=>new Intl.NumberFormat('el-GR',{maximumFractionDigits:d}).format(n);
+function persist(){localStorage.setItem(KEY,JSON.stringify(db))}
+function init(){
+ season.innerHTML=db.seasons.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+ changeSeason(false);
+}
+function changeSeason(doRender=true){
+ let sid=season.value||db.seasons[0]?.id;
+ greenhouse.innerHTML=db.greenhouses.filter(g=>g.seasonId===sid).map(g=>`<option value="${g.id}">${g.name}</option>`).join('');
+ if(doRender)render(); else render();
+}
+function currentGH(){return db.greenhouses.find(g=>g.id===greenhouse.value)}
+function render(){
+ renderAnalysis();
+ let g=currentGH(); if(!g){ghInfo.textContent='Δεν υπάρχει θερμοκήπιο σε αυτή την περίοδο.';['kg','sold','income','expense','profit','costkg'].forEach(x=>$('#'+x).textContent='—');entries.innerHTML='<div class="empty">Πρόσθεσε θερμοκήπιο για να ξεκινήσεις.</div>';return}
+ ghInfo.textContent=`${g.name} • ${num(g.area)} στρέμματα • ${g.crop}`;
+ let es=db.entries.filter(x=>x.greenhouseId===g.id && x.seasonId===season.value);
+ let harvest=es.filter(x=>x.type==='harvest').reduce((a,x)=>a+x.kg,0), sales=es.filter(x=>x.type==='sale'), sold=sales.reduce((a,x)=>a+x.kg,0);
+ let income=sales.reduce((a,x)=>a+x.kg*x.price,0), expense=es.filter(x=>x.type==='expense').reduce((a,x)=>a+x.amount,0), p=income-expense;
+ kg.textContent=num(harvest)+' kg';soldEl=document.querySelector('#sold');soldEl.textContent=num(sold)+' kg';incomeEl=document.querySelector('#income');incomeEl.textContent=euro(income);expenseEl=document.querySelector('#expense');expenseEl.textContent=euro(expense);profit.textContent=euro(p);profit.className=p>=0?'pos':'neg';costkg.textContent=harvest?euro(expense/harvest):'—';
+ let rows=es.filter(x=>filter==='all'||x.type===filter).sort((a,b)=>b.date.localeCompare(a.date));
+ entries.innerHTML=rows.length?rows.map(x=>{
+ if(x.type==='expense')return `<div class="entry"><div class="entry-main">💶 ${x.category}<small>${x.date} • ${x.note||'Χωρίς σημείωση'}</small></div><b class="neg">-${euro(x.amount)}</b><div class="entry-actions"><button class="soft mini" onclick="editEntry(${x.id})">✏️</button><button class="danger mini" onclick="deleteEntry(${x.id})">🗑️</button></div></div>`;
+ if(x.type==='harvest')return `<div class="entry"><div class="entry-main">📦 Συγκομιδή<small>${x.date} • ${x.note||'Χωρίς σημείωση'}</small></div><b>${num(x.kg)} kg</b><div class="entry-actions"><button class="soft mini" onclick="editEntry(${x.id})">✏️</button><button class="danger mini" onclick="deleteEntry(${x.id})">🗑️</button></div></div>`;
+ return `<div class="entry"><div class="entry-main">💰 Πώληση<small>${x.date} • ${num(x.kg)} kg × ${euro(x.price)}</small></div><b class="pos">${euro(x.kg*x.price)}</b><div class="entry-actions"><button class="soft mini" onclick="editEntry(${x.id})">✏️</button><button class="danger mini" onclick="deleteEntry(${x.id})">🗑️</button></div></div>`}).join(''):'<div class="empty">Δεν υπάρχουν κινήσεις.</div>';
+}
+function renderAnalysis(){
+ let sid=season.value||db.seasons[0]?.id;
+ let gs=db.greenhouses.filter(g=>g.seasonId===sid);
+ let groups={};
+ gs.forEach(g=>{
+   let es=db.entries.filter(x=>x.seasonId===sid&&x.greenhouseId===g.id);
+   let harvest=es.filter(x=>x.type==='harvest').reduce((a,x)=>a+Number(x.kg||0),0);
+   let income=es.filter(x=>x.type==='sale').reduce((a,x)=>a+Number(x.kg||0)*Number(x.price||0),0);
+   let expense=es.filter(x=>x.type==='expense').reduce((a,x)=>a+Number(x.amount||0),0);
+   if(!groups[g.crop]) groups[g.crop]={crop:g.crop,harvest:0,income:0,expense:0,area:0};
+   groups[g.crop].harvest+=harvest; groups[g.crop].income+=income; groups[g.crop].expense+=expense; groups[g.crop].area+=Number(g.area||0);
+ });
+ let arr=Object.values(groups);
+ let ti=arr.reduce((a,x)=>a+x.income,0), te=arr.reduce((a,x)=>a+x.expense,0), tp=ti-te;
+ periodIncome.textContent=euro(ti); periodExpense.textContent=euro(te); periodProfit.textContent=euro(tp);
+ periodProfit.className=tp>=0?'pos':'neg';
+ cropAnalysis.innerHTML=arr.length?arr.map(x=>{
+   let p=x.income-x.expense, c=x.harvest?x.expense/x.harvest:0;
+   return `<div class="analysis-row">
+     <div><div class="cropname">${x.crop}</div><small>${num(x.area)} στρ. • Κόστος ${x.harvest?euro(c)+'/kg':'—'}</small></div>
+     <div>${num(x.harvest)} kg</div><div>${euro(x.income)}</div><div>${euro(x.expense)}</div>
+     <div class="${p>=0?'pos':'neg'}"><b>${euro(p)}</b></div>
+   </div>`;
+ }).join(''):'<div class="empty">Πρόσθεσε καλλιέργειες για να εμφανιστεί σύγκριση.</div>';
+}
+function setFilter(f){filter=f;render()}
+function openEntry(t, keepEdit=false){
+ if(!keepEdit) editingId=null;
+ if(!currentGH())return alert('Πρόσθεσε πρώτα θερμοκήπιο.');
+ entryType.value=t;entryDate.value=new Date().toISOString().slice(0,10);note.value='';
+ if(t==='expense'){entryTitle.textContent='Νέο έξοδο';dynamic.innerHTML=`<label>Κατηγορία</label><select id="category"><option>Λίπασμα</option><option>Φυτοπροστασία</option><option>Φυτά / Σπόροι</option><option>Εργατικά</option><option>Νερό</option><option>Ρεύμα</option><option>Καύσιμα</option><option>Υλικά θερμοκηπίου</option><option>Άλλο</option></select><label>Ποσό (€)</label><input id="amount" type="number" min="0" step=".01" required>`}
+ if(t==='harvest'){entryTitle.textContent='Νέα συγκομιδή';dynamic.innerHTML=`<label>Κιλά</label><input id="kgs" type="number" min="0" step=".1" required>`}
+ if(t==='sale'){entryTitle.textContent='Νέα πώληση';dynamic.innerHTML=`<div class="row"><div><label>Κιλά</label><input id="kgs" type="number" min="0" step=".1" required></div><div><label>Τιμή/kg (€)</label><input id="price" type="number" min="0" step=".01" required></div></div>`}
+ dlg.showModal();
+}
+entryForm.onsubmit=e=>{e.preventDefault();let x={id:editingId||Date.now(),seasonId:season.value,greenhouseId:greenhouse.value,type:entryType.value,date:entryDate.value,note:note.value.trim()};if(x.type==='expense'){x.category=category.value;x.amount=+amount.value}if(x.type==='harvest')x.kg=+kgs.value;if(x.type==='sale'){x.kg=+kgs.value;x.price=+price.value}if(editingId){let i=db.entries.findIndex(v=>v.id===editingId);if(i>=0)db.entries[i]=x}else db.entries.push(x);editingId=null;persist();dlg.close();render()}
+function editEntry(id){
+ let x=db.entries.find(v=>v.id===id); if(!x)return;
+ editingId=id; openEntry(x.type,true);
+ entryTitle.textContent='Επεξεργασία '+(x.type==='expense'?'εξόδου':x.type==='harvest'?'συγκομιδής':'πώλησης');
+ entryDate.value=x.date; note.value=x.note||'';
+ if(x.type==='expense'){category.value=x.category;amount.value=x.amount}
+ if(x.type==='harvest'){kgs.value=x.kg}
+ if(x.type==='sale'){kgs.value=x.kg;price.value=x.price}
+}
+function deleteEntry(id){
+ let x=db.entries.find(v=>v.id===id); if(!x)return;
+ if(confirm('Να διαγραφεί αυτή η καταχώρηση; Η ενέργεια δεν αναιρείται.')){
+   db.entries=db.entries.filter(v=>v.id!==id);persist();render();
+ }
+}
+function deleteGreenhouse(){
+ let g=currentGH(); if(!g)return alert('Δεν υπάρχει επιλεγμένο θερμοκήπιο.');
+ let count=db.entries.filter(x=>x.greenhouseId===g.id).length;
+ if(confirm(`Να διαγραφεί το "${g.name}" μαζί με ${count} καταχωρήσεις; Η ενέργεια δεν αναιρείται.`)){
+   db.entries=db.entries.filter(x=>x.greenhouseId!==g.id);
+   db.greenhouses=db.greenhouses.filter(x=>x.id!==g.id);
+   persist();changeSeason();
+ }
+}
+function deleteSeason(){
+ let sid=season.value, ss=db.seasons.find(x=>x.id===sid); if(!ss)return;
+ let gids=db.greenhouses.filter(g=>g.seasonId===sid).map(g=>g.id);
+ let count=db.entries.filter(x=>x.seasonId===sid).length;
+ if(confirm(`Να διαγραφεί ολόκληρη η περίοδος "${ss.name}", τα ${gids.length} θερμοκήπια και ${count} καταχωρήσεις; Η ενέργεια δεν αναιρείται.`)){
+   db.entries=db.entries.filter(x=>x.seasonId!==sid);
+   db.greenhouses=db.greenhouses.filter(x=>x.seasonId!==sid);
+   db.seasons=db.seasons.filter(x=>x.id!==sid);
+   if(!db.seasons.length)db.seasons.push({id:'s'+Date.now(),name:'Νέα περίοδος'});
+   persist();init();
+ }
+}
+function openGreenhouse(){ghName.value='';ghArea.value='';ghCrop.value='Αγγούρι';customCrop.value='';customCropWrap.style.display='none';ghDlg.showModal()}
+ghCrop.onchange=()=>{customCropWrap.style.display=ghCrop.value==='Άλλη'?'block':'none'}
+ghForm.onsubmit=e=>{e.preventDefault();let id='g'+Date.now();let crop=ghCrop.value==='Άλλη'?(customCrop.value.trim()||'Άλλη'):ghCrop.value;db.greenhouses.push({id,seasonId:season.value,name:ghName.value.trim(),area:+ghArea.value,crop});persist();ghDlg.close();changeSeason();greenhouse.value=id;render()}
+function openSeason(){seasonName.value='';seasonDlg.showModal()}
+seasonForm.onsubmit=e=>{e.preventDefault();let id='s'+Date.now();db.seasons.push({id,name:seasonName.value.trim()});persist();seasonDlg.close();init();season.value=id;changeSeason()}
+
+function normalizeGreek(t){
+ return t.toLowerCase()
+ .replaceAll('ά','α').replaceAll('έ','ε').replaceAll('ή','η').replaceAll('ί','ι')
+ .replaceAll('ό','ο').replaceAll('ύ','υ').replaceAll('ώ','ω')
+ .replaceAll('ϊ','ι').replaceAll('ΐ','ι').replaceAll('ϋ','υ').replaceAll('ΰ','υ');
+}
+function spokenNumber(t){
+ // Browser recognition usually returns digits; also support a few common spoken numbers.
+ const words={ενα:1,μια:1,δυο:2,τρεις:3,τεσσερα:4,πεντε:5,δεκα:10,εικοσι:20,τριαντα:30,σαραντα:40,πενηντα:50,εκατο:100};
+ let m=t.match(/(\d+(?:[.,]\d+)?)/); if(m)return parseFloat(m[1].replace(',','.'));
+ for(const [w,n] of Object.entries(words))if(t.includes(w))return n;
+ return null;
+}
+function startVoice(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){
+   voiceStatus.textContent='Η φωνητική αναγνώριση δεν υποστηρίζεται από αυτόν τον browser. Δοκίμασε Chrome/Edge ή χρησιμοποίησε τις κανονικές καταχωρήσεις.';
+   return;
+ }
+ let r=new SR(); r.lang='el-GR'; r.interimResults=false; r.maxAlternatives=1;
+ voiceBtn.classList.add('listening'); voiceBtn.textContent='🔴 Ακούω...';
+ voiceStatus.textContent='Μίλησε καθαρά. Δεν θα αποθηκευτεί τίποτα χωρίς επιβεβαίωση.';
+ r.onresult=e=>{let raw=e.results[0][0].transcript;voiceText.textContent='«'+raw+'»';parseVoice(raw)};
+ r.onerror=e=>{voiceStatus.textContent='Δεν έγινε αναγνώριση. Δοκίμασε ξανά ('+e.error+').'};
+ r.onend=()=>{voiceBtn.classList.remove('listening');voiceBtn.textContent='🎙️ Πάτησε και μίλησε'};
+ r.start();
+}
+function parseVoice(raw){
+ let t=normalizeGreek(raw), n=spokenNumber(t);
+ // Expense
+ if(t.includes('ευρω') || t.includes('εξοδο') || t.includes('πληρωσα') || t.includes('εδωσα')){
+   openEntry('expense');
+   if(n!==null) amount.value=n;
+   let cats=[['λιπασ','Λίπασμα'],['φαρμα','Φυτοπροστασία'],['φυτο','Φυτά / Σπόροι'],['σπορ','Φυτά / Σπόροι'],['εργατ','Εργατικά'],['νερ','Νερό'],['ρευμα','Ρεύμα'],['καυσι','Καύσιμα'],['θερμοκηπ','Υλικά θερμοκηπίου']];
+   let c=cats.find(x=>t.includes(x[0])); if(c)category.value=c[1];
+   note.value='Φωνητική καταχώρηση: '+raw;
+   entryTitle.textContent='Έλεγχος φωνητικού εξόδου';
+   voiceStatus.textContent='✓ Αναγνώρισα έξοδο. Έλεγξε τα στοιχεία και πάτησε Αποθήκευση.';
+   return;
+ }
+ // Harvest
+ if(t.includes('μαζεψ') || t.includes('συγκομ') || t.includes('παραγωγ')){
+   openEntry('harvest'); if(n!==null)kgs.value=n; note.value='Φωνητική καταχώρηση: '+raw;
+   entryTitle.textContent='Έλεγχος φωνητικής συγκομιδής';
+   voiceStatus.textContent='✓ Αναγνώρισα συγκομιδή. Έλεγξε τα κιλά και αποθήκευσε.';
+   return;
+ }
+ // Sale: try first number as kg and number after "με/τιμή" as price.
+ if(t.includes('πουλη') || t.includes('πωλησ')){
+   let nums=[...t.matchAll(/(\d+(?:[.,]\d+)?)/g)].map(m=>parseFloat(m[1].replace(',','.')));
+   openEntry('sale'); if(nums[0]!=null)kgs.value=nums[0]; if(nums[1]!=null)price.value=nums[1];
+   note.value='Φωνητική καταχώρηση: '+raw; entryTitle.textContent='Έλεγχος φωνητικής πώλησης';
+   voiceStatus.textContent='✓ Αναγνώρισα πώληση. Έλεγξε κιλά και τιμή πριν αποθηκεύσεις.';
+   return;
+ }
+ voiceStatus.textContent='Δεν κατάλαβα τον τύπο καταχώρησης. Πες «μάζεψα ... κιλά», «πούλησα ... κιλά ... ευρώ» ή «έδωσα ... ευρώ για ...».';
+}
+init();
+</script></body></html>
