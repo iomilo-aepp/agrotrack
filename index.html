@@ -1,8 +1,8 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgroTrack v1.4.1</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>AgroTrack v1.5</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body{font-family:system-ui;margin:0;background:#f4f7f2;color:#17301f}.app{max-width:700px;margin:auto;padding:20px}.card{background:white;padding:18px;border-radius:18px;margin:12px 0;border:1px solid #dfe7df}
-input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;border:1px solid #ccd8cd;font-size:16px;box-sizing:border-box}button{background:#216b3a;color:white;font-weight:bold;border:0}.soft{background:#e8f3e8;color:#216b3a}.hidden{display:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.m{background:#f7faf6;padding:12px;border-radius:12px}.m b{display:block;font-size:20px}small{color:#718078}.entry{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0ed}.entry:last-child{border-bottom:0}.entryText{flex:1}.entryActions{display:flex;gap:5px}.entryActions button{width:auto;padding:7px 9px;margin:0}.danger{background:#f7eaea;color:#9c2f2f}.voice{background:#365f47}h1{margin-bottom:2px}.barrow{margin:10px 0}.barlabel{display:flex;justify-content:space-between;font-size:13px}.bar{height:10px;background:#edf2ed;border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:#216b3a;border-radius:99px}.reportTitle{display:flex;justify-content:space-between;align-items:center;gap:8px}
+input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;border:1px solid #ccd8cd;font-size:16px;box-sizing:border-box}button{background:#216b3a;color:white;font-weight:bold;border:0}.soft{background:#e8f3e8;color:#216b3a}.hidden{display:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.m{background:#f7faf6;padding:12px;border-radius:12px}.m b{display:block;font-size:20px}small{color:#718078}.entry{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0ed}.entry:last-child{border-bottom:0}.entryText{flex:1}.entryActions{display:flex;gap:5px}.entryActions button{width:auto;padding:7px 9px;margin:0}.danger{background:#f7eaea;color:#9c2f2f}.voice{background:#365f47}h1{margin-bottom:2px}.quickGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.quickGrid button{min-height:70px;font-size:17px}.quickVoice{margin-top:10px;min-height:58px;font-size:17px}.quickSummary{margin-top:12px;padding:12px;border-radius:12px;background:#f5f8f5}.quickSummary b{font-size:18px}.barrow{margin:10px 0}.barlabel{display:flex;justify-content:space-between;font-size:13px}.bar{height:10px;background:#edf2ed;border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:#216b3a;border-radius:99px}.reportTitle{display:flex;justify-content:space-between;align-items:center;gap:8px}
 </style><meta name="theme-color" content="#216b3a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -10,19 +10,35 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1>🌱 AgroTrack</h1><small>v1.4.1 • Cloud</small><div class="card">
+<div id="auth"><h1>🌱 AgroTrack</h1><small>v1.5 • Cloud</small><div class="card">
 <h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
 <p id="msg"></p></div></div>
 
 <div id="main" class="hidden"><h1>🌱 AgroTrack</h1><small id="who"></small><button class="soft" onclick="logout()">Έξοδος</button>
+<div class="card" id="producerHome">
+<h2 style="margin:0">🌱 Γρήγορη καταχώρηση</h2>
+<small>Επίλεξε τι θέλεις να καταχωρήσεις</small>
+<div class="quickGrid">
+<button onclick="quickEntry('expense')">💶 Έξοδο</button>
+<button onclick="quickEntry('harvest')">⚖️ Συγκομιδή</button>
+<button onclick="quickEntry('sale')">💰 Πώληση</button>
+<button onclick="quickEntry('activity')">📅 Εργασία</button>
+</div>
+<button class="voice quickVoice" onclick="startVoice()">🎤 Πες το με τη φωνή</button>
+<div class="quickSummary">
+<small>Τρέχουσα επιλογή</small><br>
+<b id="homeSelection">Επίλεξε περίοδο και αγροτεμάχιο</b>
+<div id="homeNumbers" style="margin-top:6px"><small>Τα βασικά στοιχεία θα εμφανιστούν εδώ.</small></div>
+</div>
+</div>
 <div class="card"><h3>Καλλιεργητική περίοδος</h3><select id="season" onchange="loadGH()"></select><input id="newSeason" placeholder="π.χ. 2026–27"><button onclick="addSeason()">+ Περίοδος</button>
 <div class="grid"><button class="soft" onclick="renameSeason()">✏️ Μετονομασία περιόδου</button><button class="danger" onclick="deleteSeason()">🗑️ Διαγραφή περιόδου</button></div></div>
 <div class="card"><h3>Αγροτεμάχιο / Θερμοκήπιο</h3><select id="gh" onchange="dash()"></select><input id="ghName" placeholder="Όνομα"><div class="grid"><input id="area" type="number" step=".1" placeholder="Στρέμματα"><select id="crop"><option>Αγγούρι</option><option>Ντομάτα</option><option>Πιπεριά</option><option>Μελιτζάνα</option><option>Κολοκύθι</option><option>Καρπούζι</option><option>Πεπόνι</option><option>Ελιά</option><option>Αμπέλι</option><option>Πατάτα</option><option>Αβοκάντο</option></select></div><button onclick="addGH()">+ Αγροτεμάχιο</button>
 <div class="grid"><button class="soft" onclick="editGH()">✏️ Επεξεργασία</button><button class="danger" onclick="deleteGH()">🗑️ Διαγραφή</button></div></div>
 <div class="card"><div class="metrics"><div class="m">Παραγωγή<b id="kg">0 kg</b></div><div class="m">Πωληθέντα<b id="sold">0 kg</b></div><div class="m">Έσοδα<b id="inc">0 €</b></div><div class="m">Έξοδα<b id="exp">0 €</b></div><div class="m">Αποτέλεσμα<b id="profit">0 €</b></div><div class="m">Κόστος/kg<b id="costkg">—</b></div></div></div>
-<div class="card"><h3>Νέα καταχώρηση</h3>
+<div class="card" id="entryCard"><h3>Νέα καταχώρηση</h3>
 <button class="voice" id="voiceBtn" onclick="startVoice()">🎙️ Φωνητική καταχώρηση</button>
 <small id="voiceMsg"></small>
 <select id="etype" onchange="entryFields()"><option value="expense">Έξοδο</option><option value="harvest">Συγκομιδή</option><option value="sale">Πώληση</option><option value="activity">📅 Εργασία / Ημερολόγιο</option></select>
@@ -124,6 +140,7 @@ await loadReports();
 async function loadReports(){
  if(!document.getElementById('rProduction'))return;
  if(!gh.value){
+  if(document.getElementById('homeSelection')){homeSelection.textContent='Επίλεξε περίοδο και αγροτεμάχιο';homeNumbers.innerHTML='<small>Τα βασικά στοιχεία θα εμφανιστούν εδώ.</small>';}
   rProduction.textContent='0 kg';rYield.textContent=rAvgPrice.textContent=rCostKg.textContent=rMargin.textContent='—';
   rIncome.textContent=rExpense.textContent=rProfit.textContent='0 €';expenseBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';monthlyReport.innerHTML='';return;
  }
@@ -142,6 +159,10 @@ async function loadReports(){
  const expense=a.data.reduce((z,x)=>z+Number(x.amount),0);
  const profit=income-expense;
  reportFor.textContent=`${g.data.name} • ${g.data.crop} • ${area} στρέμματα`;
+ if(document.getElementById('homeSelection')){
+   homeSelection.textContent=`${g.data.name} • ${g.data.crop}`;
+   homeNumbers.innerHTML=`<small>Παραγωγή: <b>${production.toLocaleString('el-GR')} kg</b> • Έσοδα: <b>${euro(income)}</b> • Αποτέλεσμα: <b>${euro(profit)}</b></small>`;
+ }
  rProduction.textContent=production.toLocaleString('el-GR')+' kg';
  rYield.textContent=area?(production/area).toLocaleString('el-GR',{maximumFractionDigits:0})+' kg':'—';
  rAvgPrice.textContent=sold?euro(income/sold):'—';
@@ -187,6 +208,14 @@ async function loadCalendar(){
    last=date;
    return `${head}<div class="entry"><div class="entryText"><b>🌱 ${x.activity_type}</b><br><small>${x.note||'Χωρίς σημείωση'}</small></div><div class="entryActions"><button class="soft" onclick="editEntry('activity',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('activity',${x.id})">🗑️</button></div></div>`;
  }).join('');
+}
+
+function quickEntry(type){
+ if(!season.value){alert('Επίλεξε πρώτα καλλιεργητική περίοδο.');season.scrollIntoView({behavior:'smooth',block:'center'});return}
+ if(!gh.value){alert('Επίλεξε πρώτα αγροτεμάχιο / θερμοκήπιο.');gh.scrollIntoView({behavior:'smooth',block:'center'});return}
+ etype.value=type;
+ entryFields();
+ document.getElementById('entryCard').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 function entryFields(){if(etype.value==='expense')fields.innerHTML='<input id="cat" placeholder="Κατηγορία π.χ. Λίπασμα"><input id="amount" type="number" step=".01" placeholder="Ποσό €">';if(etype.value==='harvest')fields.innerHTML='<input id="kgs" type="number" step=".01" placeholder="Κιλά">';if(etype.value==='sale')fields.innerHTML='<div class="grid"><input id="kgs" type="number" step=".01" placeholder="Κιλά"><input id="price" type="number" step=".01" placeholder="Τιμή/kg €"></div>';
