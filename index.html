@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgroTrack v0.7</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>AgroTrack v1.4.1</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body{font-family:system-ui;margin:0;background:#f4f7f2;color:#17301f}.app{max-width:700px;margin:auto;padding:20px}.card{background:white;padding:18px;border-radius:18px;margin:12px 0;border:1px solid #dfe7df}
 input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;border:1px solid #ccd8cd;font-size:16px;box-sizing:border-box}button{background:#216b3a;color:white;font-weight:bold;border:0}.soft{background:#e8f3e8;color:#216b3a}.hidden{display:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.m{background:#f7faf6;padding:12px;border-radius:12px}.m b{display:block;font-size:20px}small{color:#718078}.entry{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0ed}.entry:last-child{border-bottom:0}.entryText{flex:1}.entryActions{display:flex;gap:5px}.entryActions button{width:auto;padding:7px 9px;margin:0}.danger{background:#f7eaea;color:#9c2f2f}.voice{background:#365f47}h1{margin-bottom:2px}.barrow{margin:10px 0}.barlabel{display:flex;justify-content:space-between;font-size:13px}.bar{height:10px;background:#edf2ed;border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:#216b3a;border-radius:99px}.reportTitle{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -7,10 +7,10 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="AgroTrack">
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1>🌱 AgroTrack</h1><small>v0.7 • Cloud</small><div class="card">
+<div id="auth"><h1>🌱 AgroTrack</h1><small>v1.4.1 • Cloud</small><div class="card">
 <h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
@@ -299,7 +299,7 @@ function startVoice(){
 (async()=>{if(document.getElementById('calMonth'))calMonth.value=new Date().toISOString().slice(0,7);let r=await sb.auth.getSession();if(r.data.session)enter(r.data.session.user)})();
 </script><script>
 if ('serviceWorker' in navigator) {
- window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.error));
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
 }
 </script>
 </body></html>
