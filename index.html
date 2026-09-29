@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgroTrack v2.0</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>AgroTrack v2.1</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -12,7 +12,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1>🌱 AgroTrack</h1><small>v2.0 • Cloud</small><div class="card">
+<div id="auth"><h1>🌱 AgroTrack</h1><small>v2.1 • Cloud</small><div class="card">
 <h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
@@ -341,6 +341,8 @@ async function loadReports(){
  }).join(''):'<small>Δεν υπάρχουν δεδομένα.</small>';
 }
 
+async function photoUrl(path){if(!path)return '';const r=await sb.storage.from('activity-photos').createSignedUrl(path,3600);return r.error?'':r.data.signedUrl}
+async function showCalendarPhotos(){for(const el of document.querySelectorAll('[data-photo]')){const u=await photoUrl(el.dataset.photo);if(u)el.innerHTML=`<img src="${u}" alt="Φωτογραφία εργασίας" style="max-width:260px;width:100%;border-radius:10px;margin-top:8px">`;}}
 async function loadCalendar(){
  if(!document.getElementById('calendarList'))return;
  if(!gh.value){calendarList.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';return}
@@ -361,8 +363,9 @@ async function loadCalendar(){
    const date=new Date(x.activity_date+'T12:00:00').toLocaleDateString('el-GR');
    const head=date!==last?`<div style="margin-top:14px"><b>📆 ${date}</b></div>`:'';
    last=date;
-   return `${head}<div class="entry"><div class="entryText"><b>🌱 ${x.activity_type}</b><br><small>${x.note||'Χωρίς σημείωση'}</small></div><div class="entryActions"><button class="soft" onclick="editEntry('activity',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('activity',${x.id})">🗑️</button></div></div>`;
+   return `${head}<div class="entry"><div class="entryText"><b>🌱 ${x.activity_type}</b><br><small>${x.note||'Χωρίς σημείωση'}</small>${x.photo_path?`<div data-photo="${x.photo_path}"><small>📸 Φόρτωση φωτογραφίας...</small></div>`:''}</div><div class="entryActions"><button class="soft" onclick="editEntry('activity',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('activity',${x.id})">🗑️</button></div></div>`;
  }).join('');
+ await showCalendarPhotos();
 }
 
 function quickEntry(type){
@@ -374,7 +377,7 @@ function quickEntry(type){
 }
 
 function entryFields(){if(etype.value==='expense')fields.innerHTML='<input id="cat" placeholder="Κατηγορία π.χ. Λίπασμα"><input id="amount" type="number" step=".01" placeholder="Ποσό €">';if(etype.value==='harvest')fields.innerHTML='<input id="kgs" type="number" step=".01" placeholder="Κιλά">';if(etype.value==='sale')fields.innerHTML='<div class="grid"><input id="kgs" type="number" step=".01" placeholder="Κιλά"><input id="price" type="number" step=".01" placeholder="Τιμή/kg €"></div>';
-if(etype.value==='activity')fields.innerHTML='<select id="activityType"><option>Λίπανση</option><option>Ψεκασμός / Φυτοπροστασία</option><option>Πότισμα</option><option>Φύτευση</option><option>Κλάδεμα</option><option>Εργασία προσωπικού</option><option>Καθαρισμός</option><option>Συντήρηση</option><option>Άλλη εργασία</option></select>'}
+if(etype.value==='activity')fields.innerHTML='<select id="activityType"><option>Λίπανση</option><option>Ψεκασμός / Φυτοπροστασία</option><option>Πότισμα</option><option>Φύτευση</option><option>Κλάδεμα</option><option>Εργασία προσωπικού</option><option>Καθαρισμός</option><option>Συντήρηση</option><option>Άλλη εργασία</option></select><label>📸 Φωτογραφία (προαιρετικά)<input id="activityPhoto" type="file" accept="image/*" capture="environment"></label>'}
 let saving=false,editing=null;
 async function addEntry(){
  if(!gh.value)return alert('Φτιάξε πρώτα αγροτεμάχιο.');
@@ -386,7 +389,19 @@ async function addEntry(){
   if(t==='expense')Object.assign(payload,{expense_date:today,category:cat.value,amount:+amount.value});
   if(t==='harvest')Object.assign(payload,{harvest_date:today,kg:+kgs.value});
   if(t==='sale')Object.assign(payload,{sale_date:today,kg:+kgs.value,price_per_kg:+price.value});
-  if(t==='activity')Object.assign(payload,{activity_date:today,activity_type:activityType.value});
+  if(t==='activity'){
+    let photo_path=editing?.photo_path||null;
+    const pi=document.getElementById('activityPhoto');
+    if(pi?.files?.[0]){
+      const file=pi.files[0];
+      if(file.size>6*1024*1024)throw new Error('Η φωτογραφία πρέπει να είναι έως 6 MB.');
+      const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-zA-Z0-9]/g,'');
+      photo_path=`${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const up=await sb.storage.from('activity-photos').upload(photo_path,file,{contentType:file.type||'image/jpeg'});
+      if(up.error)throw up.error;
+    }
+    Object.assign(payload,{activity_date:today,activity_type:activityType.value,photo_path});
+  }
   r=editing?await sb.from(table).update(payload).eq('id',editing.id):await sb.from(table).insert(payload);
   if(r.error)return alert(r.error.message);
   editing=null;note.value='';entryFields();await dash();
@@ -402,7 +417,7 @@ async function editEntry(type,id){
  const table=type==='expense'?'expenses':type==='harvest'?'harvests':type==='sale'?'sales':'activities';
  const r=await sb.from(table).select('*').eq('id',id).single();
  if(r.error)return alert(r.error.message);
- editing={type,id};etype.value=type;entryFields();note.value=r.data.note||'';
+ editing={type,id,photo_path:r.data.photo_path||null};etype.value=type;entryFields();note.value=r.data.note||'';
  if(type==='expense'){cat.value=r.data.category;amount.value=r.data.amount}
  if(type==='harvest')kgs.value=r.data.kg;
  if(type==='sale'){kgs.value=r.data.kg;price.value=r.data.price_per_kg}
