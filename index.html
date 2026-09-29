@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgroTrack v1.7.1</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>AgroTrack v1.8</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 body{font-family:system-ui;margin:0;background:#f4f7f2;color:#17301f}.app{max-width:700px;margin:auto;padding:20px}.card{background:white;padding:18px;border-radius:18px;margin:12px 0;border:1px solid #dfe7df}
 input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;border:1px solid #ccd8cd;font-size:16px;box-sizing:border-box}button{background:#216b3a;color:white;font-weight:bold;border:0}.soft{background:#e8f3e8;color:#216b3a}.hidden{display:none}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}.m{background:#f7faf6;padding:12px;border-radius:12px}.m b{display:block;font-size:20px}small{color:#718078}.entry{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf0ed}.entry:last-child{border-bottom:0}.entryText{flex:1}.entryActions{display:flex;gap:5px}.entryActions button{width:auto;padding:7px 9px;margin:0}.danger{background:#f7eaea;color:#9c2f2f}.voice{background:#365f47}h1{margin-bottom:2px}.quickGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.quickGrid button{min-height:70px;font-size:17px}.quickVoice{margin-top:10px;min-height:58px;font-size:17px}.quickSummary{margin-top:12px;padding:12px;border-radius:12px;background:#f5f8f5}.quickSummary b{font-size:18px}.barrow{margin:10px 0}.barlabel{display:flex;justify-content:space-between;font-size:13px}.bar{height:10px;background:#edf2ed;border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:#216b3a;border-radius:99px}.reportTitle{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -10,7 +10,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1>🌱 AgroTrack</h1><small>v1.7.1 • Cloud</small><div class="card">
+<div id="auth"><h1>🌱 AgroTrack</h1><small>v1.8 • Cloud</small><div class="card">
 <h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
@@ -43,7 +43,25 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <small id="voiceMsg"></small>
 <select id="etype" onchange="entryFields()"><option value="expense">Έξοδο</option><option value="harvest">Συγκομιδή</option><option value="sale">Πώληση</option><option value="activity">📅 Εργασία / Ημερολόγιο</option></select>
 <div id="fields"></div><input id="note" placeholder="Σημείωση"><button id="saveEntryBtn" onclick="addEntry()">Αποθήκευση</button></div>
-</div><div id="page-movements" class="page"><div class="card" id="movementsCard"><h3>🧾 Κινήσεις</h3><small>Όλες οι κινήσεις του επιλεγμένου αγροτεμαχίου.</small><div id="movementsList" style="margin-top:10px"><small>Δεν υπάρχουν κινήσεις.</small></div></div>
+</div><div id="page-movements" class="page"><div class="card" id="movementsCard">
+<h3>🧾 Κινήσεις</h3>
+<small>Βρες γρήγορα οποιαδήποτε καταχώρηση και διόρθωσέ την.</small>
+<div style="display:flex;gap:6px;overflow-x:auto;margin:12px 0 8px;padding-bottom:3px">
+<button class="soft movementFilter active" data-type="all" onclick="setMovementFilter('all',this)">Όλες</button>
+<button class="soft movementFilter" data-type="expense" onclick="setMovementFilter('expense',this)">💶 Έξοδα</button>
+<button class="soft movementFilter" data-type="harvest" onclick="setMovementFilter('harvest',this)">⚖️ Συγκομιδές</button>
+<button class="soft movementFilter" data-type="sale" onclick="setMovementFilter('sale',this)">💰 Πωλήσεις</button>
+<button class="soft movementFilter" data-type="activity" onclick="setMovementFilter('activity',this)">🌱 Εργασίες</button>
+</div>
+<div class="grid2">
+<label>Από<input id="movementFrom" type="date" onchange="renderMovements()"></label>
+<label>Έως<input id="movementTo" type="date" onchange="renderMovements()"></label>
+</div>
+<label>🔍 Αναζήτηση<input id="movementSearch" placeholder="π.χ. λίπασμα, πώληση, 200..." oninput="renderMovements()"></label>
+<button class="soft" onclick="clearMovementFilters()">Καθαρισμός φίλτρων</button>
+<div id="movementCount" style="margin-top:10px"><small></small></div>
+<div id="movementsList" style="margin-top:6px"><small>Δεν υπάρχουν κινήσεις.</small></div>
+</div>
 </div><div id="page-calendar" class="page"><div class="card"><h3 id="tCalendar">📅 Ημερολόγιο Καλλιέργειας</h3>
 <div class="grid"><div><small>Μήνας</small><input id="calMonth" type="month" onchange="loadCalendar()"></div>
 <div><small>Τύπος εργασίας</small><select id="calType" onchange="loadCalendar()"><option value="">Όλες οι εργασίες</option><option>Λίπανση</option><option>Ψεκασμός / Φυτοπροστασία</option><option>Πότισμα</option><option>Φύτευση</option><option>Κλάδεμα</option><option>Εργασία προσωπικού</option><option>Καθαρισμός</option><option>Συντήρηση</option><option>Άλλη εργασία</option></select></div></div>
@@ -68,6 +86,36 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 </div>
 <div style="margin-top:18px"><button class="soft" onclick="logout()">🚪 Έξοδος</button></div></div></div>
 <script>
+let movementTypeFilter='all';
+window.allMovementRows=window.allMovementRows||[];
+function setMovementFilter(type,btn){
+ movementTypeFilter=type;
+ document.querySelectorAll('.movementFilter').forEach(b=>b.classList.remove('active'));
+ if(btn)btn.classList.add('active');
+ renderMovements();
+}
+function clearMovementFilters(){
+ movementTypeFilter='all';
+ document.querySelectorAll('.movementFilter').forEach(b=>b.classList.toggle('active',b.dataset.type==='all'));
+ const f=document.getElementById('movementFrom'),t=document.getElementById('movementTo'),q=document.getElementById('movementSearch');
+ if(f)f.value='';if(t)t.value='';if(q)q.value='';
+ renderMovements();
+}
+function renderMovements(){
+ const ml=document.getElementById('movementsList');if(!ml)return;
+ const from=document.getElementById('movementFrom')?.value||'';
+ const to=document.getElementById('movementTo')?.value||'';
+ const q=(document.getElementById('movementSearch')?.value||'').trim().toLocaleLowerCase('el-GR');
+ let rows=(window.allMovementRows||[]).filter(x=>{
+  if(movementTypeFilter!=='all'&&x.type!==movementTypeFilter)return false;
+  if(from&&x.date<from)return false;if(to&&x.date>to)return false;
+  if(q&&!(`${x.label} ${x.note||''} ${x.date}`).toLocaleLowerCase('el-GR').includes(q)))return false;
+  return true;
+ });
+ const count=document.getElementById('movementCount');
+ if(count)count.innerHTML=`<small>${rows.length} ${rows.length===1?'κίνηση':'κινήσεις'}</small>`;
+ ml.innerHTML=rows.length?rows.map(x=>`<div class="entry"><div class="entryText"><b>${x.label}</b><br><small>${new Date(x.date+'T12:00:00').toLocaleDateString('el-GR')}${x.note?' • '+x.note:''}</small></div><div class="entryActions"><button class="soft" onclick="editEntry('${x.type}',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('${x.type}',${x.id})">🗑️</button></div></div>`).join(''):'<small>Δεν βρέθηκαν κινήσεις με αυτά τα φίλτρα.</small>';
+}
 function showPage(n){document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.bottomNav button').forEach(e=>e.classList.remove('active'));document.getElementById('page-'+n)?.classList.add('active');document.getElementById('nav-'+n)?.classList.add('active');if(n==='movements')dash();if(n==='calendar')loadCalendar();if(n==='reports')loadReports();window.scrollTo({top:0,behavior:'smooth'});}
 
 const I18N={
@@ -142,8 +190,8 @@ let rows=[
 ...c.data.map(x=>({type:'sale',id:x.id,date:x.sale_date,label:'💰 Πώληση — '+x.kg+' kg × '+euro(x.price_per_kg),note:x.note||''})),
 ...d.data.map(x=>({type:'activity',id:x.id,date:x.activity_date,label:'📅 '+x.activity_type,note:x.note||''}))
 ].sort((x,y)=>y.date.localeCompare(x.date)||y.id-x.id);
-const ml=document.getElementById('movementsList');
-if(ml){ml.innerHTML=rows.length?rows.map(x=>`<div class="entry"><div class="entryText"><b>${x.label}</b><br><small>${new Date(x.date+'T12:00:00').toLocaleDateString('el-GR')}${x.note?' • '+x.note:''}</small></div><div class="entryActions"><button class="soft" onclick="editEntry('${x.type}',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('${x.type}',${x.id})">🗑️</button></div></div>`).join(''):'<small>Δεν υπάρχουν κινήσεις.</small>';}
+window.allMovementRows=rows;
+renderMovements();
 await loadCalendar();
 await loadReports();
 }
