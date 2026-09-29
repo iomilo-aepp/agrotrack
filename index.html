@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgroTrack v1.9.1</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>AgroTrack v1.9.2</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -12,7 +12,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1>🌱 AgroTrack</h1><small>v1.9.1 • Cloud</small><div class="card">
+<div id="auth"><h1>🌱 AgroTrack</h1><small>v1.9.2 • Cloud</small><div class="card">
 <h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
@@ -123,16 +123,14 @@ async function exportExcel(){
  try{
   if(!gh.value){alert('Επίλεξε πρώτα αγροτεμάχιο.');return}
   if(typeof XLSX==='undefined'){alert('Δεν φορτώθηκε η λειτουργία Excel. Έλεγξε τη σύνδεση στο Internet και ξαναδοκίμασε.');return}
-  const greenhouse={
-   id:gh.value,
-   name:gh.options[gh.selectedIndex]?.textContent||'Αγροτεμάχιο',
-   crop:gh.options[gh.selectedIndex]?.dataset?.crop||'',
-   area:Number(gh.options[gh.selectedIndex]?.dataset?.area||0)
-  };
-  const season={
-   id:seasonSel.value,
-   name:seasonSel.options[seasonSel.selectedIndex]?.textContent||'Περίοδος'
-  };
+  const seasonEl=document.getElementById('season');
+  const ghEl=document.getElementById('gh');
+  const [{data:greenhouse,error:gErr},{data:seasonData,error:sErr}]=await Promise.all([
+   sb.from('greenhouses').select('*').eq('id',ghEl.value).single(),
+   sb.from('seasons').select('*').eq('id',seasonEl.value).single()
+  ]);
+  if(gErr||sErr)throw(gErr||sErr);
+  const season=seasonData;
   const [{data:ex,error:e1},{data:ha,error:e2},{data:sa,error:e3},{data:ac,error:e4}]=await Promise.all([
    sb.from('expenses').select('*').eq('greenhouse_id',gh.value).order('expense_date'),
    sb.from('harvests').select('*').eq('greenhouse_id',gh.value).order('harvest_date'),
