@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgroTrack v1.9.2</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>AgroTrack v2.0</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -12,7 +12,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1>🌱 AgroTrack</h1><small>v1.9.2 • Cloud</small><div class="card">
+<div id="auth"><h1>🌱 AgroTrack</h1><small>v2.0 • Cloud</small><div class="card">
 <h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
@@ -70,7 +70,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <button class="soft" onclick="loadCalendar()">🔄 Ανανέωση ημερολογίου</button>
 <div id="calendarList"><small>Δεν υπάρχουν εργασίες.</small></div>
 </div>
-</div><div id="page-reports" class="page"><div class="card"><div class="reportTitle"><h3 id="tReports">📊 Αναφορές & Στατιστικά</h3><button class="soft" style="width:auto" onclick="exportExcel()">📊 Εξαγωγή Excel</button><button class="soft" style="width:auto" onclick="loadReports()">🔄</button></div>
+</div><div id="page-reports" class="page"><div class="card"><div class="reportTitle"><h3 id="tReports">📊 Αναφορές & Στατιστικά</h3><button class="soft" style="width:auto" onclick="exportExcel()">📊 Εξαγωγή Excel</button><button class="soft" style="width:auto" onclick="exportPDF()">📄 Εξαγωγή PDF</button><button class="soft" style="width:auto" onclick="loadReports()">🔄</button></div>
 <small id="reportFor">Για το επιλεγμένο αγροτεμάχιο</small>
 <div class="metrics" style="margin-top:10px">
 <div class="m">Παραγωγή<b id="rProduction">0 kg</b></div>
@@ -117,6 +117,48 @@ function renderMovements(){
  const count=document.getElementById('movementCount');
  if(count)count.innerHTML=`<small>${rows.length} ${rows.length===1?'κίνηση':'κινήσεις'}</small>`;
  ml.innerHTML=rows.length?rows.map(x=>`<div class="entry"><div class="entryText"><b>${x.label}</b><br><small>${new Date(x.date+'T12:00:00').toLocaleDateString('el-GR')}${x.note?' • '+x.note:''}</small></div><div class="entryActions"><button class="soft" onclick="editEntry('${x.type}',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('${x.type}',${x.id})">🗑️</button></div></div>`).join(''):'<small>Δεν βρέθηκαν κινήσεις με αυτά τα φίλτρα.</small>';
+}
+
+
+async function exportPDF(){
+ try{
+  const seasonEl=document.getElementById('season'),ghEl=document.getElementById('gh');
+  if(!ghEl||!ghEl.value){alert('Επίλεξε πρώτα αγροτεμάχιο.');return}
+  const [{data:greenhouse,error:gErr},{data:season,error:sErr},{data:ex,error:e1},{data:ha,error:e2},{data:sa,error:e3},{data:ac,error:e4}]=await Promise.all([
+   sb.from('greenhouses').select('*').eq('id',ghEl.value).single(),
+   sb.from('seasons').select('*').eq('id',seasonEl.value).single(),
+   sb.from('expenses').select('*').eq('greenhouse_id',ghEl.value).order('expense_date'),
+   sb.from('harvests').select('*').eq('greenhouse_id',ghEl.value).order('harvest_date'),
+   sb.from('sales').select('*').eq('greenhouse_id',ghEl.value).order('sale_date'),
+   sb.from('activities').select('*').eq('greenhouse_id',ghEl.value).order('activity_date')
+  ]);
+  if(gErr||sErr||e1||e2||e3||e4)throw(gErr||sErr||e1||e2||e3||e4);
+  const production=(ha||[]).reduce((a,x)=>a+Number(x.kg||0),0);
+  const soldKg=(sa||[]).reduce((a,x)=>a+Number(x.kg||0),0);
+  const income=(sa||[]).reduce((a,x)=>a+Number(x.kg||0)*Number(x.price_per_kg||0),0);
+  const expenses=(ex||[]).reduce((a,x)=>a+Number(x.amount||0),0);
+  const result=income-expenses,avg=soldKg?income/soldKg:0,cost=production?expenses/production:0;
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money=v=>Number(v||0).toLocaleString('el-GR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+  const cat={};(ex||[]).forEach(x=>cat[x.category]=(cat[x.category]||0)+Number(x.amount||0));
+  const rows=[
+   ...(ex||[]).map(x=>[x.expense_date,'Έξοδο',x.category,money(x.amount),x.note||'']),
+   ...(ha||[]).map(x=>[x.harvest_date,'Συγκομιδή',x.kg+' kg','',x.note||'']),
+   ...(sa||[]).map(x=>[x.sale_date,'Πώληση',x.kg+' kg × '+money(x.price_per_kg),money(Number(x.kg)*Number(x.price_per_kg)),x.buyer||x.note||'']),
+   ...(ac||[]).map(x=>[x.activity_date,'Εργασία',x.activity_type,'',x.note||''])
+  ].sort((a,b)=>b[0].localeCompare(a[0]));
+  const html=`<!doctype html><html lang="el"><head><meta charset="utf-8"><title>AgroTrack Αναφορά</title><style>
+  body{font-family:Arial,sans-serif;color:#17251b;margin:32px}h1{color:#174f2c;margin-bottom:4px}h2{margin-top:28px}.muted{color:#66736a}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.box{border:1px solid #d9e2da;border-radius:10px;padding:12px}.big{font-size:22px;font-weight:bold}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}th,td{border-bottom:1px solid #ddd;padding:7px;text-align:left}th{background:#eef5ef}@media print{body{margin:12mm}.noPrint{display:none}}@page{size:A4;margin:12mm}</style></head><body>
+  <h1>🌱 AgroTrack</h1><div class="muted">Αναφορά Παραγωγού</div>
+  <h2>${esc(greenhouse.name)}</h2><p><b>Περίοδος:</b> ${esc(season.name)} &nbsp; <b>Καλλιέργεια:</b> ${esc(greenhouse.crop)} &nbsp; <b>Έκταση:</b> ${esc(greenhouse.area)} στρ.</p>
+  <div class="grid"><div class="box">Παραγωγή<div class="big">${production.toLocaleString('el-GR')} kg</div></div><div class="box">Έσοδα<div class="big">${money(income)}</div></div><div class="box">Έξοδα<div class="big">${money(expenses)}</div></div><div class="box">Καθαρό αποτέλεσμα<div class="big">${money(result)}</div></div><div class="box">Μέση τιμή<div class="big">${money(avg)}/kg</div></div><div class="box">Κόστος<div class="big">${money(cost)}/kg</div></div></div>
+  <h2>Έξοδα ανά κατηγορία</h2><table><thead><tr><th>Κατηγορία</th><th>Ποσό</th></tr></thead><tbody>${Object.entries(cat).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${money(v)}</td></tr>`).join('')||'<tr><td colspan="2">Δεν υπάρχουν έξοδα</td></tr>'}</tbody></table>
+  <h2>Κινήσεις</h2><table><thead><tr><th>Ημερομηνία</th><th>Τύπος</th><th>Στοιχεία</th><th>Ποσό</th><th>Σημείωση</th></tr></thead><tbody>${rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="5">Δεν υπάρχουν κινήσεις</td></tr>'}</tbody></table>
+  <p class="muted">Δημιουργήθηκε από το AgroTrack</p><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`;
+  const win=window.open('','_blank');
+  if(!win){alert('Επίτρεψε τα αναδυόμενα παράθυρα για να δημιουργηθεί το PDF.');return}
+  win.document.open();win.document.write(html);win.document.close();
+ }catch(err){console.error(err);alert('Δεν μπόρεσε να δημιουργηθεί το PDF: '+(err.message||err))}
 }
 
 async function exportExcel(){
