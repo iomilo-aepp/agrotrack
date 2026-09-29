@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgroTrack v2.1</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>AgroTrack v2.2</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -12,7 +12,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1>🌱 AgroTrack</h1><small>v2.1 • Cloud</small><div class="card">
+<div id="auth"><h1>🌱 AgroTrack</h1><small>v2.2 • Cloud</small><div class="card">
 <h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
@@ -343,6 +343,7 @@ async function loadReports(){
 
 async function photoUrl(path){if(!path)return '';const r=await sb.storage.from('activity-photos').createSignedUrl(path,3600);return r.error?'':r.data.signedUrl}
 async function showCalendarPhotos(){for(const el of document.querySelectorAll('[data-photo]')){const u=await photoUrl(el.dataset.photo);if(u)el.innerHTML=`<img src="${u}" alt="Φωτογραφία εργασίας" style="max-width:260px;width:100%;border-radius:10px;margin-top:8px">`;}}
+async function completeActivity(id){const {error}=await sb.from('activities').update({status:'completed',scheduled:false}).eq('id',id);if(error){alert(error.message);return}await dash();}
 async function loadCalendar(){
  if(!document.getElementById('calendarList'))return;
  if(!gh.value){calendarList.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';return}
@@ -363,7 +364,7 @@ async function loadCalendar(){
    const date=new Date(x.activity_date+'T12:00:00').toLocaleDateString('el-GR');
    const head=date!==last?`<div style="margin-top:14px"><b>📆 ${date}</b></div>`:'';
    last=date;
-   return `${head}<div class="entry"><div class="entryText"><b>🌱 ${x.activity_type}</b><br><small>${x.note||'Χωρίς σημείωση'}</small>${x.photo_path?`<div data-photo="${x.photo_path}"><small>📸 Φόρτωση φωτογραφίας...</small></div>`:''}</div><div class="entryActions"><button class="soft" onclick="editEntry('activity',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('activity',${x.id})">🗑️</button></div></div>`;
+   return `${head}<div class="entry"><div class="entryText"><b>🌱 ${x.activity_type}</b> ${x.status==='pending'?'<span style="font-weight:bold">⏳ Εκκρεμεί</span>':'<span>✅ Ολοκληρώθηκε</span>'}<br><small>${x.note||'Χωρίς σημείωση'}</small>${x.photo_path?`<div data-photo="${x.photo_path}"><small>📸 Φόρτωση φωτογραφίας...</small></div>`:''}${x.status==='pending'?`<button class="soft" style="margin-top:8px;width:auto" onclick="completeActivity(${x.id})">✅ Ολοκληρώθηκε</button>`:''}</div><div class="entryActions"><button class="soft" onclick="editEntry('activity',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('activity',${x.id})">🗑️</button></div></div>`;
  }).join('');
  await showCalendarPhotos();
 }
@@ -377,7 +378,7 @@ function quickEntry(type){
 }
 
 function entryFields(){if(etype.value==='expense')fields.innerHTML='<input id="cat" placeholder="Κατηγορία π.χ. Λίπασμα"><input id="amount" type="number" step=".01" placeholder="Ποσό €">';if(etype.value==='harvest')fields.innerHTML='<input id="kgs" type="number" step=".01" placeholder="Κιλά">';if(etype.value==='sale')fields.innerHTML='<div class="grid"><input id="kgs" type="number" step=".01" placeholder="Κιλά"><input id="price" type="number" step=".01" placeholder="Τιμή/kg €"></div>';
-if(etype.value==='activity')fields.innerHTML='<select id="activityType"><option>Λίπανση</option><option>Ψεκασμός / Φυτοπροστασία</option><option>Πότισμα</option><option>Φύτευση</option><option>Κλάδεμα</option><option>Εργασία προσωπικού</option><option>Καθαρισμός</option><option>Συντήρηση</option><option>Άλλη εργασία</option></select><label>📸 Φωτογραφία (προαιρετικά)<input id="activityPhoto" type="file" accept="image/*" capture="environment"></label>'}
+if(etype.value==='activity')fields.innerHTML='<label>Ημερομηνία<input id="activityDate" type="date" value="'+today+'"></label><label>Κατάσταση<select id="activityStatus"><option value="completed">✅ Ολοκληρώθηκε</option><option value="pending">⏳ Προγραμματισμένη / Εκκρεμεί</option></select></label><select id="activityType"><option>Λίπανση</option><option>Ψεκασμός / Φυτοπροστασία</option><option>Πότισμα</option><option>Φύτευση</option><option>Κλάδεμα</option><option>Εργασία προσωπικού</option><option>Καθαρισμός</option><option>Συντήρηση</option><option>Άλλη εργασία</option></select><label>📸 Φωτογραφία (προαιρετικά)<input id="activityPhoto" type="file" accept="image/*" capture="environment"></label>'}
 let saving=false,editing=null;
 async function addEntry(){
  if(!gh.value)return alert('Φτιάξε πρώτα αγροτεμάχιο.');
@@ -400,7 +401,7 @@ async function addEntry(){
       const up=await sb.storage.from('activity-photos').upload(photo_path,file,{contentType:file.type||'image/jpeg'});
       if(up.error)throw up.error;
     }
-    Object.assign(payload,{activity_date:today,activity_type:activityType.value,photo_path});
+    const st=document.getElementById('activityStatus')?.value||'completed';Object.assign(payload,{activity_date:document.getElementById('activityDate')?.value||today,activity_type:activityType.value,photo_path,status:st,scheduled:st==='pending'});
   }
   r=editing?await sb.from(table).update(payload).eq('id',editing.id):await sb.from(table).insert(payload);
   if(r.error)return alert(r.error.message);
@@ -421,7 +422,7 @@ async function editEntry(type,id){
  if(type==='expense'){cat.value=r.data.category;amount.value=r.data.amount}
  if(type==='harvest')kgs.value=r.data.kg;
  if(type==='sale'){kgs.value=r.data.kg;price.value=r.data.price_per_kg}
- if(type==='activity')activityType.value=r.data.activity_type;
+ if(type==='activity'){activityType.value=r.data.activity_type;if(document.getElementById('activityDate'))activityDate.value=r.data.activity_date;if(document.getElementById('activityStatus'))activityStatus.value=r.data.status||'completed';}
  saveEntryBtn.textContent='Αποθήκευση αλλαγών';showPage('entry');
 }
 function parseGreekNumber(s){return Number(String(s).replace(',','.'))}
