@@ -124,13 +124,14 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <hr style="margin:22px 0;border:0;border-top:1px solid #dfe8df"><h4>🧾 Νέα αγορά εφοδίου</h4>
 <label>Ημερομηνία αγοράς<input id="purchaseDate" type="date"></label>
 <label>Αγροτεμάχιο / Θερμοκήπιο για το έξοδο<select id="purchaseGreenhouse"><option value="">— Επίλεξε αγροτεμάχιο —</option></select></label>
-<label>Εφόδιο<select id="purchaseInventory"><option value="">— Επίλεξε εφόδιο —</option></select></label>
-<div class="grid"><label>Ποσότητα<input id="purchaseQty" type="number" step="0.01" min="0.01" placeholder="0"></label><label>Τιμή μονάδας €<input id="purchaseCost" type="number" step="0.0001" min="0" placeholder="0,00"></label></div>
 <label>Προμηθευτής<input id="purchaseSupplier" placeholder="Προμηθευτής"></label>
 <label>Αριθμός παραστατικού<input id="purchaseDocument" placeholder="π.χ. ΤΙΜ-125"></label>
 <label>Σημείωση<input id="purchaseNote" placeholder="Σημείωση (προαιρετικά)"></label>
-<div class="quickSummary"><small>Σύνολο αγοράς</small><br><b id="purchaseTotal">0,00 €</b></div>
-<button id="savePurchaseBtn" onclick="savePurchase()">🧾 Καταχώρηση αγοράς</button>
+<h4 style="margin-bottom:6px">Προϊόντα παραστατικού</h4>
+<div id="purchaseItems"></div>
+<button type="button" class="soft" onclick="addPurchaseItem()">➕ Προσθήκη προϊόντος</button>
+<div class="quickSummary"><small>Σύνολο παραστατικού</small><br><b id="purchaseTotal">0,00 €</b></div>
+<button id="savePurchaseBtn" onclick="savePurchase()">🧾 Καταχώρηση παραστατικού</button>
 <h4>Ιστορικό αγορών</h4><div id="purchaseList"><small>Δεν υπάρχουν αγορές.</small></div>
 <div class="quickSummary"><small>Συνολική αξία αποθέματος</small><br><b id="inventoryValue">0,00 €</b></div>
 <div id="inventoryList" style="margin-top:12px"><small>Δεν υπάρχουν είδη.</small></div></div></div>
@@ -305,7 +306,7 @@ async function exportExcel(){
  }catch(err){console.error(err);alert('Δεν μπόρεσε να δημιουργηθεί το Excel: '+(err.message||err))}
 }
 
-document.addEventListener('input',e=>{if(e.target?.id==='purchaseQty'||e.target?.id==='purchaseCost')updatePurchaseTotal()});
+document.addEventListener('input',e=>{if(e.target?.classList?.contains('purchaseQty')||e.target?.classList?.contains('purchaseCost'))updatePurchaseTotal()});
 document.addEventListener('DOMContentLoaded',()=>{const d=document.getElementById('purchaseDate');if(d&&!d.value)d.value=new Date().toISOString().slice(0,10)});
 function showPage(n){document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.bottomNav button').forEach(e=>e.classList.remove('active'));document.getElementById('page-'+n)?.classList.add('active');document.getElementById('nav-'+n)?.classList.add('active');if(n==='home')dash();if(n==='movements')dash();if(n==='calendar')loadCalendar();if(n==='reports')loadReports();if(n==='profile')loadProfile();if(n==='customers')loadCustomers();if(n==='payments')loadPayments();if(n==='inventory')loadInventory();window.scrollTo({top:0,behavior:'smooth'});}
 
@@ -405,24 +406,37 @@ async function loadInventory(){
  box.innerHTML=r.data.length?r.data.map(x=>`<div class="entry"><div class="entryText"><b>${esc(x.name)}</b><br><small>${esc(x.category)} • ${Number(x.quantity||0).toLocaleString('el-GR')} ${esc(x.unit)} • ${euro(x.unit_cost)}/${esc(x.unit)}${x.supplier?' • '+esc(x.supplier):''}</small><br><small>Αξία: ${euro(Number(x.quantity||0)*Number(x.unit_cost||0))}${x.note?' • '+esc(x.note):''}</small></div><div class="entryActions"><button class="soft" onclick='editInventory(${JSON.stringify(x)})'>✏️</button><button class="danger" onclick="deleteInventory(${x.id})">🗑️</button></div></div>`).join(''):'<small>Δεν υπάρχουν είδη.</small>';
  await loadPurchases(r.data);
 }
-function updatePurchaseTotal(){const q=Number(document.getElementById('purchaseQty')?.value||0),c=Number(document.getElementById('purchaseCost')?.value||0),el=document.getElementById('purchaseTotal');if(el)el.textContent=euro(q*c)}
+let purchaseInventoryCache=[];
+function purchaseOptions(selected=''){return '<option value="">— Επίλεξε εφόδιο —</option>'+purchaseInventoryCache.map(x=>`<option value="${x.id}" ${String(x.id)===String(selected)?'selected':''}>${esc(x.name)} (${Number(x.quantity||0).toLocaleString('el-GR')} ${esc(x.unit)})</option>`).join('')}
+function addPurchaseItem(invId='',qty='',cost=''){
+ const box=document.getElementById('purchaseItems');if(!box)return;
+ const row=document.createElement('div');row.className='entry purchaseItem';row.style.alignItems='end';
+ row.innerHTML=`<div class="entryText" style="width:100%"><label>Εφόδιο<select class="purchaseInventory">${purchaseOptions(invId)}</select></label><div class="grid"><label>Ποσότητα<input class="purchaseQty" type="number" step="0.01" min="0.01" value="${qty}" placeholder="0"></label><label>Τιμή μονάδας €<input class="purchaseCost" type="number" step="0.0001" min="0" value="${cost}" placeholder="0,00"></label></div></div><div class="entryActions"><button type="button" class="danger" onclick="this.closest('.purchaseItem').remove();updatePurchaseTotal()">🗑️</button></div>`;
+ box.appendChild(row);updatePurchaseTotal();
+}
+function updatePurchaseTotal(){let total=0;document.querySelectorAll('.purchaseItem').forEach(r=>total+=Number(r.querySelector('.purchaseQty')?.value||0)*Number(r.querySelector('.purchaseCost')?.value||0));const el=document.getElementById('purchaseTotal');if(el)el.textContent=euro(total)}
 async function loadPurchases(items){
- const sel=document.getElementById('purchaseInventory'),box=document.getElementById('purchaseList');if(!sel||!box)return;
- const inv=items||[];sel.innerHTML='<option value="">— Επίλεξε εφόδιο —</option>'+inv.map(x=>`<option value="${x.id}">${esc(x.name)} (${Number(x.quantity||0).toLocaleString('el-GR')} ${esc(x.unit)})</option>`).join('');
+ const box=document.getElementById('purchaseList');if(!box)return;purchaseInventoryCache=items||[];
+ const pib=document.getElementById('purchaseItems');if(pib&&!pib.children.length)addPurchaseItem();
  const ghSel=document.getElementById('purchaseGreenhouse');if(ghSel){const gr=await sb.from('greenhouses').select('id,name,crop').order('name');if(!gr.error){const current=String(document.getElementById('gh')?.value||ghSel.value||'');ghSel.innerHTML='<option value="">— Επίλεξε αγροτεμάχιο —</option>'+gr.data.map(x=>`<option value="${x.id}">${esc(x.name)} • ${esc(x.crop)}</option>`).join('');if(current&&gr.data.some(x=>String(x.id)===current))ghSel.value=current;}}
- const r=await sb.from('inventory_purchases').select('*').order('purchase_date',{ascending:false}).order('id',{ascending:false});if(r.error){box.innerHTML='<small>Δεν φορτώθηκαν οι αγορές: '+esc(r.error.message)+'</small>';return}
- const byId=Object.fromEntries(inv.map(x=>[x.id,x]));box.innerHTML=r.data.length?r.data.map(x=>{const it=byId[x.inventory_id]||{};return `<div class="entry"><div class="entryText"><b>${esc(it.name||'Εφόδιο')}</b><br><small>${new Date(x.purchase_date+'T12:00:00').toLocaleDateString('el-GR')} • ${Number(x.quantity||0).toLocaleString('el-GR')} ${esc(it.unit||'')} × ${euro(x.unit_cost)} = ${euro(Number(x.quantity||0)*Number(x.unit_cost||0))}</small><br><small>${x.supplier?esc(x.supplier):''}${x.document_number?' • '+esc(x.document_number):''}${x.note?' • '+esc(x.note):''}</small></div></div>`}).join(''):'<small>Δεν υπάρχουν αγορές.</small>';
+ const [hr,ir]=await Promise.all([sb.from('purchase_invoices').select('*').order('invoice_date',{ascending:false}).order('id',{ascending:false}),sb.from('purchase_invoice_items').select('*')]);
+ if(hr.error||ir.error){box.innerHTML='<small>Δεν φορτώθηκαν τα παραστατικά: '+esc((hr.error||ir.error).message)+'</small>';return}
+ const byId=Object.fromEntries(purchaseInventoryCache.map(x=>[x.id,x])),byInv={};(ir.data||[]).forEach(x=>(byInv[x.invoice_id]??=[]).push(x));
+ box.innerHTML=(hr.data||[]).length?hr.data.map(h=>{const lines=byInv[h.id]||[],total=lines.reduce((a,x)=>a+Number(x.quantity||0)*Number(x.unit_cost||0),0);return `<div class="entry"><div class="entryText"><b>${esc(h.supplier||'Παραστατικό')} ${h.document_number?'• '+esc(h.document_number):''}</b><br><small>${new Date(h.invoice_date+'T12:00:00').toLocaleDateString('el-GR')} • ${lines.length} ${lines.length===1?'προϊόν':'προϊόντα'} • ${euro(total)}</small><br><small>${lines.map(x=>{const it=byId[x.inventory_id]||{};return esc(it.name||'Εφόδιο')+' '+Number(x.quantity||0).toLocaleString('el-GR')+' '+esc(it.unit||'')}).join(' • ')}${h.note?' • '+esc(h.note):''}</small></div></div>`}).join(''):'<small>Δεν υπάρχουν παραστατικά.</small>';
 }
 async function savePurchase(){
- const invId=Number(document.getElementById('purchaseInventory').value),ghId=Number(document.getElementById('purchaseGreenhouse')?.value),q=Number(document.getElementById('purchaseQty').value),uc=Number(document.getElementById('purchaseCost').value),date=document.getElementById('purchaseDate').value;
- if(!ghId)return alert('Επίλεξε αγροτεμάχιο / θερμοκήπιο για να καταχωρηθεί το έξοδο.');if(!invId)return alert('Επίλεξε εφόδιο.');if(!date)return alert('Επίλεξε ημερομηνία.');if(!Number.isFinite(q)||q<=0)return alert('Συμπλήρωσε έγκυρη ποσότητα.');if(!Number.isFinite(uc)||uc<0)return alert('Συμπλήρωσε έγκυρη τιμή μονάδας.');
- const ir=await sb.from('inventory').select('*').eq('id',invId).single();if(ir.error)return alert(ir.error.message);const old=ir.data,oldQ=Number(old.quantity||0),oldCost=Number(old.unit_cost||0),newQ=oldQ+q,newCost=newQ?((oldQ*oldCost)+(q*uc))/newQ:uc,total=q*uc;
- const supplier=document.getElementById('purchaseSupplier').value.trim(),doc=document.getElementById('purchaseDocument').value.trim(),purchaseNote=document.getElementById('purchaseNote').value.trim();
- const expenseNote=['Αυτόματα από αγορά εφοδίου: '+old.name,supplier?'Προμηθευτής: '+supplier:'',doc?'Παραστατικό: '+doc:'',purchaseNote].filter(Boolean).join(' • ');
- const er=await sb.from('expenses').insert({user_id:user.id,greenhouse_id:ghId,expense_date:date,category:old.category||'Εφόδια',amount:total,note:expenseNote}).select().single();if(er.error)return alert('Δεν δημιουργήθηκε το έξοδο: '+er.error.message);
- const pr=await sb.from('inventory_purchases').insert({user_id:user.id,inventory_id:invId,purchase_date:date,quantity:q,unit_cost:uc,supplier:supplier||null,document_number:doc||null,note:purchaseNote||null,expense_id:er.data.id}).select().single();if(pr.error){await sb.from('expenses').delete().eq('id',er.data.id);return alert('Δεν καταχωρήθηκε η αγορά: '+pr.error.message)}
- const ur=await sb.from('inventory').update({quantity:newQ,unit_cost:newCost,supplier:supplier||old.supplier||null}).eq('id',invId);if(ur.error){await sb.from('inventory_purchases').delete().eq('id',pr.data.id);await sb.from('expenses').delete().eq('id',er.data.id);return alert('Δεν ενημερώθηκε το απόθεμα: '+ur.error.message)}
- document.getElementById('purchaseQty').value='';document.getElementById('purchaseCost').value='';document.getElementById('purchaseSupplier').value='';document.getElementById('purchaseDocument').value='';document.getElementById('purchaseNote').value='';updatePurchaseTotal();await loadInventory();await dash();alert('✅ Η αγορά καταχωρήθηκε, το απόθεμα αυξήθηκε και δημιουργήθηκε αυτόματα το έξοδο '+euro(total)+'.');
+ const ghId=Number(document.getElementById('purchaseGreenhouse')?.value),date=document.getElementById('purchaseDate').value,supplier=document.getElementById('purchaseSupplier').value.trim(),doc=document.getElementById('purchaseDocument').value.trim(),note=document.getElementById('purchaseNote').value.trim();
+ if(!ghId)return alert('Επίλεξε αγροτεμάχιο / θερμοκήπιο για να καταχωρηθεί το έξοδο.');if(!date)return alert('Επίλεξε ημερομηνία.');
+ const lines=[...document.querySelectorAll('.purchaseItem')].map(r=>({inventory_id:Number(r.querySelector('.purchaseInventory')?.value),quantity:Number(r.querySelector('.purchaseQty')?.value),unit_cost:Number(r.querySelector('.purchaseCost')?.value)}));
+ if(!lines.length||lines.some(x=>!x.inventory_id||!Number.isFinite(x.quantity)||x.quantity<=0||!Number.isFinite(x.unit_cost)||x.unit_cost<0))return alert('Συμπλήρωσε σωστά όλα τα προϊόντα, τις ποσότητες και τις τιμές.');
+ const ids=[...new Set(lines.map(x=>x.inventory_id))];if(ids.length!==lines.length)return alert('Το ίδιο εφόδιο υπάρχει δύο φορές. Βάλ’ το μία φορά με τη συνολική ποσότητα.');
+ const invById=Object.fromEntries(purchaseInventoryCache.map(x=>[x.id,x]));const total=lines.reduce((a,x)=>a+x.quantity*x.unit_cost,0);
+ const expenseNote=['Αυτόματα από παραστατικό αγοράς',supplier?'Προμηθευτής: '+supplier:'',doc?'Παραστατικό: '+doc:'',note].filter(Boolean).join(' • ');
+ const er=await sb.from('expenses').insert({user_id:user.id,greenhouse_id:ghId,expense_date:date,category:'Εφόδια',amount:total,note:expenseNote}).select().single();if(er.error)return alert('Δεν δημιουργήθηκε το έξοδο: '+er.error.message);
+ const hr=await sb.from('purchase_invoices').insert({user_id:user.id,greenhouse_id:ghId,invoice_date:date,supplier:supplier||null,document_number:doc||null,expense_id:er.data.id,note:note||null}).select().single();if(hr.error){await sb.from('expenses').delete().eq('id',er.data.id);return alert('Δεν καταχωρήθηκε το παραστατικό: '+hr.error.message)}
+ const rows=lines.map(x=>({user_id:user.id,invoice_id:hr.data.id,...x}));const lr=await sb.from('purchase_invoice_items').insert(rows);if(lr.error){await sb.from('purchase_invoices').delete().eq('id',hr.data.id);await sb.from('expenses').delete().eq('id',er.data.id);return alert('Δεν καταχωρήθηκαν τα προϊόντα: '+lr.error.message)}
+ const changed=[];for(const x of lines){const old=invById[x.inventory_id];if(!old)continue;const oq=Number(old.quantity||0),oc=Number(old.unit_cost||0),nq=oq+x.quantity,nc=nq?((oq*oc)+(x.quantity*x.unit_cost))/nq:x.unit_cost;const ur=await sb.from('inventory').update({quantity:nq,unit_cost:nc,supplier:supplier||old.supplier||null}).eq('id',x.inventory_id);if(ur.error){alert('Το παραστατικό αποθηκεύτηκε, αλλά απέτυχε η ενημέρωση αποθέματος για '+old.name+': '+ur.error.message);return}changed.push(old.name)}
+ document.getElementById('purchaseSupplier').value='';document.getElementById('purchaseDocument').value='';document.getElementById('purchaseNote').value='';document.getElementById('purchaseItems').innerHTML='';updatePurchaseTotal();await loadInventory();await dash();alert('✅ Το παραστατικό καταχωρήθηκε με '+lines.length+' προϊόντα, ενημερώθηκε η αποθήκη και δημιουργήθηκε ένα έξοδο '+euro(total)+'.');
 }
 async function saveInventory(){
  const name=inventoryName.value.trim(),quantity=Number(inventoryQty.value),unit_cost=Number(inventoryCost.value||0);
