@@ -145,15 +145,18 @@ async function exportPDF(){
  try{
   const seasonEl=document.getElementById('season'),ghEl=document.getElementById('gh');
   if(!ghEl||!ghEl.value){alert('Επίλεξε πρώτα αγροτεμάχιο.');return}
-  const [{data:greenhouse,error:gErr},{data:season,error:sErr},{data:ex,error:e1},{data:ha,error:e2},{data:sa,error:e3},{data:ac,error:e4}]=await Promise.all([
+  const [{data:greenhouse,error:gErr},{data:season,error:sErr},{data:ex,error:e1},{data:ha,error:e2},{data:sa,error:e3},{data:ac,error:e4},{data:payments,error:pErr},{data:customers,error:cErr},{data:allSales,error:asErr}]=await Promise.all([
    sb.from('greenhouses').select('*').eq('id',ghEl.value).single(),
    sb.from('seasons').select('*').eq('id',seasonEl.value).single(),
    sb.from('expenses').select('*').eq('greenhouse_id',ghEl.value).order('expense_date'),
    sb.from('harvests').select('*').eq('greenhouse_id',ghEl.value).order('harvest_date'),
    sb.from('sales').select('*').eq('greenhouse_id',ghEl.value).order('sale_date'),
-   sb.from('activities').select('*').eq('greenhouse_id',ghEl.value).order('activity_date')
+   sb.from('activities').select('*').eq('greenhouse_id',ghEl.value).order('activity_date'),
+   sb.from('payments').select('*').order('payment_date'),
+   sb.from('customers').select('*').order('name'),
+   sb.from('sales').select('*')
   ]);
-  if(gErr||sErr||e1||e2||e3||e4)throw(gErr||sErr||e1||e2||e3||e4);
+  if(gErr||sErr||e1||e2||e3||e4||pErr||cErr||asErr)throw(gErr||sErr||e1||e2||e3||e4||pErr||cErr||asErr);
   const production=(ha||[]).reduce((a,x)=>a+Number(x.kg||0),0);
   const soldKg=(sa||[]).reduce((a,x)=>a+Number(x.kg||0),0);
   const income=(sa||[]).reduce((a,x)=>a+Number(x.kg||0)*Number(x.price_per_kg||0),0);
@@ -162,6 +165,12 @@ async function exportPDF(){
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const money=v=>Number(v||0).toLocaleString('el-GR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
   const cat={};(ex||[]).forEach(x=>cat[x.category]=(cat[x.category]||0)+Number(x.amount||0));const grades={A:{kg:0,income:0},B:{kg:0,income:0},SKARTA:{kg:0,income:0}};(sa||[]).forEach(x=>{if(grades[x.grade]){grades[x.grade].kg+=Number(x.kg||0);grades[x.grade].income+=Number(x.kg||0)*Number(x.price_per_kg||0)}});
+  const customerById=Object.fromEntries((customers||[]).map(x=>[x.id,x.name]));
+  const allSalesByName={};(allSales||[]).forEach(x=>{const n=(x.buyer||'').trim();if(n)allSalesByName[n]=(allSalesByName[n]||0)+Number(x.kg||0)*Number(x.price_per_kg||0)});
+  const paidById={};(payments||[]).forEach(x=>paidById[x.customer_id]=(paidById[x.customer_id]||0)+Number(x.amount||0));
+  const totalPayments=(payments||[]).reduce((a,x)=>a+Number(x.amount||0),0);
+  const totalCustomerSales=(customers||[]).reduce((a,c)=>a+(allSalesByName[c.name]||0),0);
+  const totalBalance=totalCustomerSales-totalPayments;
   const rows=[
    ...(ex||[]).map(x=>[x.expense_date,'Έξοδο',x.category,money(x.amount),x.note||'']),
    ...(ha||[]).map(x=>[x.harvest_date,'Συγκομιδή',x.kg+' kg','',x.note||'']),
@@ -173,7 +182,7 @@ async function exportPDF(){
   <h1>🌱 AgroTrack</h1><div class="muted">Αναφορά Παραγωγού</div>
   <h2>${esc(greenhouse.name)}</h2><p><b>Περίοδος:</b> ${esc(season.name)} &nbsp; <b>Καλλιέργεια:</b> ${esc(greenhouse.crop)} &nbsp; <b>Έκταση:</b> ${esc(greenhouse.area)} στρ.</p>
   <div class="grid"><div class="box">Παραγωγή<div class="big">${production.toLocaleString('el-GR')} kg</div></div><div class="box">Έσοδα<div class="big">${money(income)}</div></div><div class="box">Έξοδα<div class="big">${money(expenses)}</div></div><div class="box">Καθαρό αποτέλεσμα<div class="big">${money(result)}</div></div><div class="box">Μέση τιμή<div class="big">${money(avg)}/kg</div></div><div class="box">Κόστος<div class="big">${money(cost)}/kg</div></div></div>
-  <h2>Διαλογή πωλήσεων</h2><table><thead><tr><th>Κατηγορία</th><th>Κιλά</th><th>Έσοδα</th><th>Μέση τιμή/kg</th></tr></thead><tbody>${['A','B','SKARTA'].map(gr=>`<tr><td>${gr==='SKARTA'?'Σκάρτα':gr}</td><td>${grades[gr].kg.toLocaleString('el-GR')} kg</td><td>${money(grades[gr].income)}</td><td>${grades[gr].kg?money(grades[gr].income/grades[gr].kg):'—'}</td></tr>`).join('')}</tbody></table><h2>Πωλήσεις ανά πελάτη / έμπορο</h2><table><thead><tr><th>Πελάτης</th><th>Κιλά</th><th>Α</th><th>Β</th><th>Σκάρτα</th><th>Έσοδα</th><th>Μέση τιμή/kg</th></tr></thead><tbody>${Object.entries((sa||[]).reduce((o,x)=>{const n=x.buyer||'Χωρίς πελάτη';o[n]??={kg:0,income:0,A:0,B:0,SKARTA:0};o[n].kg+=Number(x.kg||0);o[n].income+=Number(x.kg||0)*Number(x.price_per_kg||0);if(['A','B','SKARTA'].includes(x.grade))o[n][x.grade]+=Number(x.kg||0);return o},{})).map(([n,v])=>`<tr><td>${esc(n)}</td><td>${v.kg.toLocaleString('el-GR')}</td><td>${v.A.toLocaleString('el-GR')}</td><td>${v.B.toLocaleString('el-GR')}</td><td>${v.SKARTA.toLocaleString('el-GR')}</td><td>${money(v.income)}</td><td>${v.kg?money(v.income/v.kg):'—'}</td></tr>`).join('')||'<tr><td colspan="7">Δεν υπάρχουν πωλήσεις</td></tr>'}</tbody></table><h2>Έξοδα ανά κατηγορία</h2><table><thead><tr><th>Κατηγορία</th><th>Ποσό</th></tr></thead><tbody>${Object.entries(cat).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${money(v)}</td></tr>`).join('')||'<tr><td colspan="2">Δεν υπάρχουν έξοδα</td></tr>'}</tbody></table>
+  <h2>Διαλογή πωλήσεων</h2><table><thead><tr><th>Κατηγορία</th><th>Κιλά</th><th>Έσοδα</th><th>Μέση τιμή/kg</th></tr></thead><tbody>${['A','B','SKARTA'].map(gr=>`<tr><td>${gr==='SKARTA'?'Σκάρτα':gr}</td><td>${grades[gr].kg.toLocaleString('el-GR')} kg</td><td>${money(grades[gr].income)}</td><td>${grades[gr].kg?money(grades[gr].income/grades[gr].kg):'—'}</td></tr>`).join('')}</tbody></table><h2>Πωλήσεις ανά πελάτη / έμπορο</h2><table><thead><tr><th>Πελάτης</th><th>Κιλά</th><th>Α</th><th>Β</th><th>Σκάρτα</th><th>Έσοδα</th><th>Μέση τιμή/kg</th></tr></thead><tbody>${Object.entries((sa||[]).reduce((o,x)=>{const n=x.buyer||'Χωρίς πελάτη';o[n]??={kg:0,income:0,A:0,B:0,SKARTA:0};o[n].kg+=Number(x.kg||0);o[n].income+=Number(x.kg||0)*Number(x.price_per_kg||0);if(['A','B','SKARTA'].includes(x.grade))o[n][x.grade]+=Number(x.kg||0);return o},{})).map(([n,v])=>`<tr><td>${esc(n)}</td><td>${v.kg.toLocaleString('el-GR')}</td><td>${v.A.toLocaleString('el-GR')}</td><td>${v.B.toLocaleString('el-GR')}</td><td>${v.SKARTA.toLocaleString('el-GR')}</td><td>${money(v.income)}</td><td>${v.kg?money(v.income/v.kg):'—'}</td></tr>`).join('')||'<tr><td colspan="7">Δεν υπάρχουν πωλήσεις</td></tr>'}</tbody></table><h2>💳 Πληρωμές & Υπόλοιπα πελατών</h2><div class="grid"><div class="box">Σύνολο πωλήσεων πελατών<div class="big">${money(totalCustomerSales)}</div></div><div class="box">Σύνολο πληρωμών<div class="big">${money(totalPayments)}</div></div><div class="box">Συνολικό υπόλοιπο<div class="big">${money(totalBalance)}</div></div></div><table><thead><tr><th>Πελάτης</th><th>Πωλήσεις</th><th>Πληρωμές</th><th>Υπόλοιπο</th></tr></thead><tbody>${(customers||[]).map(c=>{const sv=allSalesByName[c.name]||0,pv=paidById[c.id]||0;return `<tr><td>${esc(c.name)}</td><td>${money(sv)}</td><td>${money(pv)}</td><td>${money(sv-pv)}</td></tr>`}).join('')||'<tr><td colspan="4">Δεν υπάρχουν πελάτες</td></tr>'}</tbody></table><h3>Ιστορικό πληρωμών</h3><table><thead><tr><th>Ημερομηνία</th><th>Πελάτης</th><th>Ποσό</th><th>Τρόπος</th><th>Σημείωση</th></tr></thead><tbody>${(payments||[]).map(x=>`<tr><td>${esc(x.payment_date)}</td><td>${esc(customerById[x.customer_id]||'')}</td><td>${money(x.amount)}</td><td>${esc(x.payment_method||'')}</td><td>${esc(x.note||'')}</td></tr>`).join('')||'<tr><td colspan="5">Δεν υπάρχουν πληρωμές</td></tr>'}</tbody></table><h2>Έξοδα ανά κατηγορία</h2><table><thead><tr><th>Κατηγορία</th><th>Ποσό</th></tr></thead><tbody>${Object.entries(cat).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${money(v)}</td></tr>`).join('')||'<tr><td colspan="2">Δεν υπάρχουν έξοδα</td></tr>'}</tbody></table>
   <h2>Κινήσεις</h2><table><thead><tr><th>Ημερομηνία</th><th>Τύπος</th><th>Στοιχεία</th><th>Ποσό</th><th>Σημείωση</th></tr></thead><tbody>${rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="5">Δεν υπάρχουν κινήσεις</td></tr>'}</tbody></table>
   <p class="muted">Δημιουργήθηκε από το AgroTrack</p><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`;
   const win=window.open('','_blank');
@@ -207,6 +216,12 @@ async function exportExcel(){
   const income=(sa||[]).reduce((a,x)=>a+Number(x.kg||0)*Number(x.price_per_kg||0),0);
   const expenses=(ex||[]).reduce((a,x)=>a+Number(x.amount||0),0);
   const avg=soldKg?income/soldKg:0, cost=production?expenses/production:0, result=income-expenses;
+  const excelCustomerById=Object.fromEntries((customers||[]).map(x=>[x.id,x.name]));
+  const excelAllSalesByName={};(allSales||[]).forEach(x=>{const n=(x.buyer||'').trim();if(n)excelAllSalesByName[n]=(excelAllSalesByName[n]||0)+Number(x.kg||0)*Number(x.price_per_kg||0)});
+  const excelPaidById={};(payments||[]).forEach(x=>excelPaidById[x.customer_id]=(excelPaidById[x.customer_id]||0)+Number(x.amount||0));
+  const excelTotalPayments=(payments||[]).reduce((a,x)=>a+Number(x.amount||0),0);
+  const excelTotalCustomerSales=(customers||[]).reduce((a,c)=>a+(excelAllSalesByName[c.name]||0),0);
+  const excelTotalBalance=excelTotalCustomerSales-excelTotalPayments;
   const wb=XLSX.utils.book_new();
   const summary=[
    ['AgroTrack - Αναφορά Παραγωγού',''],
@@ -221,7 +236,10 @@ async function exportExcel(){
    ['Έσοδα (€)',income],
    ['Έξοδα (€)',expenses],
    ['Κόστος €/kg',cost],
-   ['Καθαρό αποτέλεσμα (€)',result]
+   ['Καθαρό αποτέλεσμα (€)',result],
+   ['',''],
+   ['Πληρωμές πελατών (€)',excelTotalPayments],
+   ['Υπόλοιπα πελατών (€)',excelTotalBalance]
   ];
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(summary),'Σύνοψη');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet((ex||[]).map(x=>({'Ημερομηνία':x.expense_date,'Κατηγορία':x.category,'Ποσό €':Number(x.amount),'Σημείωση':x.note||''}))),'Έξοδα');
