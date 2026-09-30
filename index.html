@@ -12,13 +12,13 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1>🌱 AgroTrack</h1><small>v2.5 • Cloud</small><div class="card">
+<div id="auth"><h1>🌱 AgroTrack</h1><small>v2.6 • Cloud</small><div class="card">
 <h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
 <p id="msg"></p></div></div>
 
-<div id="main" class="hidden"><h1>🌱 AgroTrack</h1><small id="who"></small><nav class="bottomNav"><button id="nav-home" class="active" onclick="showPage('home')"><span class="ico">🏠</span>Αρχική</button><button id="nav-entry" onclick="showPage('entry')"><span class="ico">➕</span>Καταχώρηση</button><button id="nav-movements" onclick="showPage('movements')"><span class="ico">🧾</span>Κινήσεις</button><button id="nav-calendar" onclick="showPage('calendar')"><span class="ico">📅</span>Ημερολόγιο</button><button id="nav-reports" onclick="showPage('reports')"><span class="ico">📊</span>Αναφορές</button><button id="nav-customers" onclick="showPage('customers')"><span class="ico">👥</span>Πελάτες</button><button id="nav-profile" onclick="showPage('profile')"><span class="ico">👤</span>Προφίλ</button></nav>
+<div id="main" class="hidden"><h1>🌱 AgroTrack</h1><small id="who"></small><nav class="bottomNav"><button id="nav-home" class="active" onclick="showPage('home')"><span class="ico">🏠</span>Αρχική</button><button id="nav-entry" onclick="showPage('entry')"><span class="ico">➕</span>Καταχώρηση</button><button id="nav-movements" onclick="showPage('movements')"><span class="ico">🧾</span>Κινήσεις</button><button id="nav-calendar" onclick="showPage('calendar')"><span class="ico">📅</span>Ημερολόγιο</button><button id="nav-reports" onclick="showPage('reports')"><span class="ico">📊</span>Αναφορές</button><button id="nav-customers" onclick="showPage('customers')"><span class="ico">👥</span>Πελάτες</button><button id="nav-payments" onclick="showPage('payments')"><span class="ico">💳</span>Πληρωμές</button><button id="nav-profile" onclick="showPage('profile')"><span class="ico">👤</span>Προφίλ</button></nav>
 <div id="page-home" class="page active"><div class="card" id="producerHome">
 <h2 style="margin:0" id="tQuick">🌱 Γρήγορη καταχώρηση</h2>
 <small id="tChoose">Επίλεξε τι θέλεις να καταχωρήσεις</small>
@@ -82,11 +82,21 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <div class="m">Καθαρό αποτέλεσμα<b id="rProfit">0 €</b></div>
 <div class="m">Περιθώριο<b id="rMargin">—</b></div>
 </div>
-<h4>Διαλογή πωλήσεων</h4><div id="gradeBreakdown"><small>Δεν υπάρχουν πωλήσεις.</small></div><h4>👥 Πωλήσεις ανά πελάτη / έμπορο</h4><div id="customerBreakdown"><small>Δεν υπάρχουν πωλήσεις.</small></div><h4>Έξοδα ανά κατηγορία</h4><div id="expenseBreakdown"><small>Δεν υπάρχουν έξοδα.</small></div>
+<h4>Διαλογή πωλήσεων</h4><div id="gradeBreakdown"><small>Δεν υπάρχουν πωλήσεις.</small></div><h4>👥 Πωλήσεις ανά πελάτη / έμπορο</h4><div id="customerBreakdown"><small>Δεν υπάρχουν πωλήσεις.</small></div><h4>💳 Υπόλοιπα πελατών (συνολικά)</h4><div id="paymentBreakdown"><small>Δεν υπάρχουν στοιχεία.</small></div><h4>Έξοδα ανά κατηγορία</h4><div id="expenseBreakdown"><small>Δεν υπάρχουν έξοδα.</small></div>
 <h4>Ανά μήνα</h4><div id="monthlyReport"><small>Δεν υπάρχουν δεδομένα.</small></div>
 </div>
 </div>
 <div id="page-customers" class="page"><div class="card"><h3>👥 Πελάτες / Έμποροι</h3><small>Αποθήκευσε τους αγοραστές σου για γρήγορη επιλογή στις πωλήσεις.</small><label>Όνομα / Επωνυμία<input id="customerName" placeholder="π.χ. Έμπορος Α"></label><label>Τηλέφωνο<input id="customerPhone" type="tel" placeholder="Τηλέφωνο (προαιρετικά)"></label><label>Σημείωση<input id="customerNote" placeholder="Σημείωση (προαιρετικά)"></label><button id="saveCustomerBtn" onclick="saveCustomer()">➕ Αποθήκευση πελάτη</button><button class="soft hidden" id="cancelCustomerBtn" onclick="cancelCustomerEdit()">Ακύρωση επεξεργασίας</button><div id="customersList" style="margin-top:12px"><small>Δεν υπάρχουν πελάτες.</small></div></div></div>
+
+<div id="page-payments" class="page"><div class="card"><h3>💳 Πληρωμές & Υπόλοιπα</h3><small>Καταχώρησε τις εισπράξεις από πελάτες και δες τι υπόλοιπο απομένει.</small>
+<label>Πελάτης / Έμπορος<select id="paymentCustomer"><option value="">— Επίλεξε πελάτη —</option></select></label>
+<label>Ημερομηνία<input id="paymentDate" type="date"></label>
+<label>Ποσό €<input id="paymentAmount" type="number" step="0.01" min="0.01" placeholder="0,00"></label>
+<label>Τρόπος πληρωμής<select id="paymentMethod"><option value="Μετρητά">Μετρητά</option><option value="Τράπεζα">Τράπεζα</option><option value="Άλλο">Άλλο</option></select></label>
+<label>Σημείωση<input id="paymentNote" placeholder="Σημείωση (προαιρετικά)"></label>
+<button id="savePaymentBtn" onclick="savePayment()">💾 Αποθήκευση πληρωμής</button><button class="soft hidden" id="cancelPaymentBtn" onclick="cancelPaymentEdit()">Ακύρωση επεξεργασίας</button>
+<h4>Υπόλοιπα πελατών</h4><div id="customerBalances"><small>Δεν υπάρχουν στοιχεία.</small></div>
+<h4>Ιστορικό πληρωμών</h4><div id="paymentsList"><small>Δεν υπάρχουν πληρωμές.</small></div></div></div>
 <div id="page-profile" class="page"><div class="card">
 <h3>👤 Προφίλ Παραγωγού</h3>
 <small>Τα στοιχεία αποθηκεύονται στον προσωπικό σου λογαριασμό.</small>
@@ -191,6 +201,7 @@ async function exportExcel(){
    sb.from('activities').select('*').eq('greenhouse_id',gh.value).order('activity_date')
   ]);
   if(e1||e2||e3||e4)throw(e1||e2||e3||e4);
+  const [{data:payments,error:pErr},{data:customers,error:cErr},{data:allSales,error:asErr}]=await Promise.all([sb.from('payments').select('*').order('payment_date'),sb.from('customers').select('*').order('name'),sb.from('sales').select('*')]);if(pErr||cErr||asErr)throw(pErr||cErr||asErr);
   const production=(ha||[]).reduce((a,x)=>a+Number(x.kg||0),0);
   const soldKg=(sa||[]).reduce((a,x)=>a+Number(x.kg||0),0);
   const income=(sa||[]).reduce((a,x)=>a+Number(x.kg||0)*Number(x.price_per_kg||0),0);
@@ -218,13 +229,15 @@ async function exportExcel(){
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet((sa||[]).map(x=>({'Ημερομηνία':x.sale_date,'Διαλογή':x.grade==='SKARTA'?'Σκάρτα':(x.grade||''),'Κιλά':Number(x.kg),'Τιμή €/kg':Number(x.price_per_kg),'Σύνολο €':Number(x.kg)*Number(x.price_per_kg),'Αγοραστής':x.buyer||'','Σημείωση':x.note||''}))),'Πωλήσεις');
   const customerRows=Object.entries((sa||[]).reduce((o,x)=>{const n=x.buyer||'Χωρίς πελάτη';o[n]??={kg:0,income:0,A:0,B:0,SKARTA:0};o[n].kg+=Number(x.kg||0);o[n].income+=Number(x.kg||0)*Number(x.price_per_kg||0);if(['A','B','SKARTA'].includes(x.grade))o[n][x.grade]+=Number(x.kg||0);return o},{})).map(([n,v])=>({'Πελάτης / Έμπορος':n,'Σύνολο kg':v.kg,'Α kg':v.A,'Β kg':v.B,'Σκάρτα kg':v.SKARTA,'Έσοδα €':v.income,'Μέση τιμή €/kg':v.kg?v.income/v.kg:0}));
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(customerRows),'Ανά πελάτη');
+  const customerById=Object.fromEntries((customers||[]).map(x=>[x.id,x.name]));XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet((payments||[]).map(x=>({'Ημερομηνία':x.payment_date,'Πελάτης':customerById[x.customer_id]||'','Ποσό €':Number(x.amount),'Τρόπος':x.payment_method||'','Σημείωση':x.note||''}))),'Πληρωμές');
+  const allSalesByName={};(allSales||[]).forEach(x=>{const n=(x.buyer||'').trim();if(n)allSalesByName[n]=(allSalesByName[n]||0)+Number(x.kg||0)*Number(x.price_per_kg||0)});const paidById={};(payments||[]).forEach(x=>paidById[x.customer_id]=(paidById[x.customer_id]||0)+Number(x.amount||0));const balanceRows=(customers||[]).map(c=>({'Πελάτης':c.name,'Πωλήσεις €':allSalesByName[c.name]||0,'Πληρωμές €':paidById[c.id]||0,'Υπόλοιπο €':(allSalesByName[c.name]||0)-(paidById[c.id]||0)}));XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(balanceRows),'Υπόλοιπα πελατών');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet((ac||[]).map(x=>({'Ημερομηνία':x.activity_date,'Εργασία':x.activity_type,'Σημείωση':x.note||''}))),'Εργασίες');
   const clean=v=>String(v||'AgroTrack').replace(/[\\/:*?"<>|]/g,'-');
   XLSX.writeFile(wb,`AgroTrack_${clean(greenhouse?.name)}_${clean(season?.name)}.xlsx`);
  }catch(err){console.error(err);alert('Δεν μπόρεσε να δημιουργηθεί το Excel: '+(err.message||err))}
 }
 
-function showPage(n){document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.bottomNav button').forEach(e=>e.classList.remove('active'));document.getElementById('page-'+n)?.classList.add('active');document.getElementById('nav-'+n)?.classList.add('active');if(n==='movements')dash();if(n==='calendar')loadCalendar();if(n==='reports')loadReports();if(n==='profile')loadProfile();if(n==='customers')loadCustomers();window.scrollTo({top:0,behavior:'smooth'});}
+function showPage(n){document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.bottomNav button').forEach(e=>e.classList.remove('active'));document.getElementById('page-'+n)?.classList.add('active');document.getElementById('nav-'+n)?.classList.add('active');if(n==='movements')dash();if(n==='calendar')loadCalendar();if(n==='reports')loadReports();if(n==='profile')loadProfile();if(n==='customers')loadCustomers();if(n==='payments')loadPayments();window.scrollTo({top:0,behavior:'smooth'});}
 
 const I18N={
  el:{quick:'🌱 Γρήγορη καταχώρηση',choose:'Επίλεξε τι θέλεις να καταχωρήσεις',expense:'💶 Έξοδο',harvest:'⚖️ Συγκομιδή',sale:'💰 Πώληση',activity:'📅 Εργασία',voice:'🎤 Πες το με τη φωνή',current:'Τρέχουσα επιλογή',reports:'📊 Αναφορές & Στατιστικά',calendar:'📅 Ημερολόγιο Καλλιέργειας',newEntry:'Νέα καταχώρηση'},
@@ -282,6 +295,33 @@ async function loadBuyerOptions(selected=''){
  const r=await sb.from('customers').select('name').order('name');if(r.error)return;
  el.innerHTML='<option value="">— Χωρίς επιλογή —</option>'+r.data.map(x=>`<option value="${String(x.name).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">${x.name}</option>`).join('');if(selected)el.value=selected;
 }
+let editingPaymentId=null;
+async function loadPayments(){
+ if(!user)return;
+ const today=new Date().toISOString().slice(0,10);if(document.getElementById('paymentDate')&&!paymentDate.value)paymentDate.value=today;
+ const [cr,pr,sr]=await Promise.all([sb.from('customers').select('*').order('name'),sb.from('payments').select('*').order('payment_date',{ascending:false}),sb.from('sales').select('*')]);
+ if(cr.error||pr.error||sr.error){alert((cr.error||pr.error||sr.error).message);return}
+ const sel=document.getElementById('paymentCustomer');const keep=sel?.value||'';if(sel){sel.innerHTML='<option value="">— Επίλεξε πελάτη —</option>'+cr.data.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');if(keep)sel.value=keep;}
+ const byId=Object.fromEntries(cr.data.map(x=>[x.id,x]));
+ const sales={};sr.data.forEach(x=>{const n=(x.buyer||'').trim();if(n)sales[n]=(sales[n]||0)+Number(x.kg||0)*Number(x.price_per_kg||0)});
+ const paid={};pr.data.forEach(x=>paid[x.customer_id]=(paid[x.customer_id]||0)+Number(x.amount||0));
+ const b=document.getElementById('customerBalances');if(b)b.innerHTML=cr.data.length?cr.data.map(c=>{const sv=sales[c.name]||0,pv=paid[c.id]||0,bal=sv-pv;return `<div class="entry"><div class="entryText"><b>${c.name}</b><br><small>Πωλήσεις: ${euro(sv)} • Πληρωμές: ${euro(pv)}</small></div><div style="text-align:right"><small>Υπόλοιπο</small><br><b>${euro(bal)}</b></div></div>`}).join(''):'<small>Δεν υπάρχουν πελάτες.</small>';
+ const list=document.getElementById('paymentsList');if(list)list.innerHTML=pr.data.length?pr.data.map(x=>`<div class="entry"><div class="entryText"><b>${byId[x.customer_id]?.name||'Πελάτης'} • ${euro(x.amount)}</b><br><small>${new Date(x.payment_date+'T12:00:00').toLocaleDateString('el-GR')} • ${x.payment_method||'—'}${x.note?' • '+x.note:''}</small></div><div class="entryActions"><button class="soft" onclick='editPayment(${JSON.stringify(x)})'>✏️</button><button class="danger" onclick="deletePayment(${x.id})">🗑️</button></div></div>`).join(''):'<small>Δεν υπάρχουν πληρωμές.</small>';
+}
+async function savePayment(){
+ const cid=Number(paymentCustomer.value),amount=Number(paymentAmount.value);if(!cid)return alert('Επίλεξε πελάτη.');if(!Number.isFinite(amount)||amount<=0)return alert('Συμπλήρωσε ποσό μεγαλύτερο από 0.');
+ const payload={user_id:user.id,customer_id:cid,payment_date:paymentDate.value||new Date().toISOString().slice(0,10),amount,payment_method:paymentMethod.value||null,note:paymentNote.value.trim()||null};
+ const r=editingPaymentId?await sb.from('payments').update(payload).eq('id',editingPaymentId):await sb.from('payments').insert(payload);if(r.error)return alert(r.error.message);cancelPaymentEdit();await loadPayments();
+}
+function editPayment(x){editingPaymentId=x.id;paymentCustomer.value=x.customer_id;paymentDate.value=x.payment_date;paymentAmount.value=x.amount;paymentMethod.value=x.payment_method||'Μετρητά';paymentNote.value=x.note||'';savePaymentBtn.textContent='💾 Αποθήκευση αλλαγών';cancelPaymentBtn.classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'})}
+function cancelPaymentEdit(){editingPaymentId=null;if(document.getElementById('paymentAmount'))paymentAmount.value='';if(document.getElementById('paymentNote'))paymentNote.value='';if(document.getElementById('paymentDate'))paymentDate.value=new Date().toISOString().slice(0,10);if(document.getElementById('savePaymentBtn'))savePaymentBtn.textContent='💾 Αποθήκευση πληρωμής';if(document.getElementById('cancelPaymentBtn'))cancelPaymentBtn.classList.add('hidden')}
+async function deletePayment(id){if(!confirm('Να διαγραφεί η πληρωμή;'))return;const r=await sb.from('payments').delete().eq('id',id);if(r.error)return alert(r.error.message);await loadPayments()}
+async function renderPaymentBreakdown(){
+ const box=document.getElementById('paymentBreakdown');if(!box||!user)return;const [cr,pr,sr]=await Promise.all([sb.from('customers').select('*').order('name'),sb.from('payments').select('*'),sb.from('sales').select('*')]);if(cr.error||pr.error||sr.error)return;
+ const sales={};sr.data.forEach(x=>{const n=(x.buyer||'').trim();if(n)sales[n]=(sales[n]||0)+Number(x.kg||0)*Number(x.price_per_kg||0)});const paid={};pr.data.forEach(x=>paid[x.customer_id]=(paid[x.customer_id]||0)+Number(x.amount||0));
+ box.innerHTML=cr.data.length?cr.data.map(c=>{const sv=sales[c.name]||0,pv=paid[c.id]||0;return `<div class="entry"><div class="entryText"><b>${c.name}</b><br><small>Πωλήσεις ${euro(sv)} • Πληρωμές ${euro(pv)}</small></div><b>${euro(sv-pv)}</b></div>`}).join(''):'<small>Δεν υπάρχουν πελάτες.</small>';
+}
+
 async function loadSeasons(){let r=await sb.from('seasons').select('*').order('created_at');if(r.error)return alert(r.error.message);season.innerHTML=r.data.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');loadGH()}
 async function addSeason(){if(!newSeason.value.trim())return;let r=await sb.from('seasons').insert({user_id:user.id,name:newSeason.value.trim()});if(r.error)return alert(r.error.message);newSeason.value='';loadSeasons()}
 async function loadGH(){if(!season.value){gh.innerHTML='';return}let r=await sb.from('greenhouses').select('*').eq('season_id',season.value);if(r.error)return alert(r.error.message);gh.innerHTML=r.data.map(x=>`<option value="${x.id}">${x.name} • ${x.crop}</option>`).join('');dash()}
@@ -353,7 +393,7 @@ async function loadReports(){
  if(!gh.value){
   if(document.getElementById('homeSelection')){homeSelection.textContent='Επίλεξε περίοδο και αγροτεμάχιο';homeNumbers.innerHTML='<small>Τα βασικά στοιχεία θα εμφανιστούν εδώ.</small>';}
   rProduction.textContent='0 kg';rYield.textContent=rAvgPrice.textContent=rCostKg.textContent=rMargin.textContent='—';
-  rIncome.textContent=rExpense.textContent=rProfit.textContent='0 €';expenseBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';if(document.getElementById('gradeBreakdown'))gradeBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';if(document.getElementById('customerBreakdown'))customerBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';monthlyReport.innerHTML='';return;
+  rIncome.textContent=rExpense.textContent=rProfit.textContent='0 €';expenseBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';if(document.getElementById('gradeBreakdown'))gradeBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';if(document.getElementById('customerBreakdown'))customerBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';await renderPaymentBreakdown();monthlyReport.innerHTML='';return;
  }
  const gid=gh.value;
  const [g,a,b,c]=await Promise.all([
@@ -380,6 +420,7 @@ async function loadReports(){
  rCostKg.textContent=production?euro(expense/production):'—';
  rIncome.textContent=euro(income);rExpense.textContent=euro(expense);rProfit.textContent=euro(profit);
  rMargin.textContent=income?(profit/income*100).toLocaleString('el-GR',{maximumFractionDigits:1})+'%':'—';
+ await renderPaymentBreakdown();
 
  const grades={A:{kg:0,income:0},B:{kg:0,income:0},SKARTA:{kg:0,income:0}};c.data.forEach(x=>{if(grades[x.grade]){grades[x.grade].kg+=Number(x.kg||0);grades[x.grade].income+=Number(x.kg||0)*Number(x.price_per_kg||0)}});if(document.getElementById('gradeBreakdown'))gradeBreakdown.innerHTML=['A','B','SKARTA'].map(gr=>{const v=grades[gr],label=gr==='SKARTA'?'Σκάρτα':gr,avg=v.kg?v.income/v.kg:0;return `<div class="entry"><div class="entryText"><b>${label}</b><br><small>${v.kg.toLocaleString('el-GR')} kg</small></div><div style="text-align:right"><b>${euro(v.income)}</b><br><small>Μ.Ο. ${v.kg?euro(avg)+'/kg':'—'}</small></div></div>`}).join('');
  const buyers={};c.data.forEach(x=>{const n=(x.buyer||'Χωρίς πελάτη').trim()||'Χωρίς πελάτη';buyers[n]??={kg:0,income:0,A:0,B:0,SKARTA:0};buyers[n].kg+=Number(x.kg||0);buyers[n].income+=Number(x.kg||0)*Number(x.price_per_kg||0);if(['A','B','SKARTA'].includes(x.grade))buyers[n][x.grade]+=Number(x.kg||0)});if(document.getElementById('customerBreakdown'))customerBreakdown.innerHTML=Object.entries(buyers).sort((a,b)=>b[1].income-a[1].income).map(([n,v])=>`<div class="entry"><div class="entryText"><b>${n}</b><br><small>${v.kg.toLocaleString('el-GR')} kg • Α ${v.A.toLocaleString('el-GR')} • Β ${v.B.toLocaleString('el-GR')} • Σκάρτα ${v.SKARTA.toLocaleString('el-GR')}</small></div><div style="text-align:right"><b>${euro(v.income)}</b><br><small>Μ.Ο. ${v.kg?euro(v.income/v.kg)+'/kg':'—'}</small></div></div>`).join('')||'<small>Δεν υπάρχουν πωλήσεις.</small>';
