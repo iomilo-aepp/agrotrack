@@ -548,10 +548,17 @@ async function loadReports(){
  a.data.forEach(x=>add(x.expense_date,'expense',Number(x.amount)));
  b.data.forEach(x=>add(x.harvest_date,'production',Number(x.kg)));
  c.data.forEach(x=>add(x.sale_date,'income',Number(x.kg)*Number(x.price_per_kg)));
- monthlyReport.innerHTML=Object.keys(months).length?Object.entries(months).sort((x,y)=>y[0].localeCompare(x[0])).map(([m,v])=>{
-  const [yy,mm]=m.split('-');const label=new Date(+yy,+mm-1,1).toLocaleDateString('el-GR',{month:'long',year:'numeric'});
-  return `<div class="entry"><div class="entryText"><b>${label}</b><br><small>Παραγωγή: ${v.production.toLocaleString('el-GR')} kg</small></div><div style="text-align:right"><b>${euro(v.income-v.expense)}</b><br><small>${euro(v.income)} / ${euro(v.expense)}</small></div></div>`;
- }).join(''):'<small>Δεν υπάρχουν δεδομένα.</small>';
+ if(Object.keys(months).length){
+  const monthRows=Object.entries(months).sort((x,y)=>y[0].localeCompare(x[0])).map(([m,v])=>{
+   const [yy,mm]=m.split('-');const label=new Date(+yy,+mm-1,1).toLocaleDateString('el-GR',{month:'long',year:'numeric'});
+   return `<div class="entry"><div class="entryText"><b>${label}</b><br><small>Παραγωγή: ${v.production.toLocaleString('el-GR')} kg</small></div><div style="text-align:right"><b>${euro(v.income-v.expense)}</b><br><small>${euro(v.income)} / ${euro(v.expense)}</small></div></div>`;
+  }).join('');
+  const totalProduction=Object.values(months).reduce((sum,v)=>sum+v.production,0);
+  const totalIncome=Object.values(months).reduce((sum,v)=>sum+v.income,0);
+  const totalExpense=Object.values(months).reduce((sum,v)=>sum+v.expense,0);
+  const totalProfit=totalIncome-totalExpense;
+  monthlyReport.innerHTML=monthRows+`<div class="entry" style="margin-top:12px;border-top:2px solid #216b3a;padding-top:14px"><div class="entryText"><b>📊 ΣΥΝΟΛΟ ΠΕΡΙΟΔΟΥ</b><br><small>Παραγωγή: ${totalProduction.toLocaleString('el-GR')} kg</small><br><small>Μέση τιμή: ${sold?euro(totalIncome/sold)+'/kg':'—'} • Κόστος: ${totalProduction?euro(totalExpense/totalProduction)+'/kg':'—'}</small></div><div style="text-align:right"><b>${euro(totalProfit)}</b><br><small>Έσοδα ${euro(totalIncome)}</small><br><small>Έξοδα ${euro(totalExpense)}</small></div></div>`;
+ }else monthlyReport.innerHTML='<small>Δεν υπάρχουν δεδομένα.</small>';
 }
 
 async function photoUrl(path){if(!path)return '';const r=await sb.storage.from('activity-photos').createSignedUrl(path,3600);return r.error?'':r.data.signedUrl}
