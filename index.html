@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GeoFylo v3.8</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>GeoFylo v3.9</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -15,7 +15,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v3.8 • Cloud</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v3.9 • Cloud</small><div class="card">
 <h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
@@ -49,7 +49,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <div class="dashBox"><small>🅰️ Α</small><b id="dGradeA">0 kg</b></div>
 <div class="dashBox"><small>🅱️ Β</small><b id="dGradeB">0 kg</b></div>
 <div class="dashBox"><small>📦 Σκάρτα</small><b id="dGradeS">0 kg</b></div>
-<div class="dashBox"><small>💳 Υπόλοιπα πελατών</small><b id="dBalances">0,00 €</b></div>
+<div class="dashBox"><small>💳 Υπόλοιπα πελατών</small><b id="dBalances">0,00 €</b></div><div class="dashBox"><small>🏪 Οφειλές σε προμηθευτές</small><b id="dSupplierDebt">0,00 €</b></div><div class="dashBox"><small>⚖️ Καθαρή θέση οφειλών</small><b id="dDebtNet">0,00 €</b></div>
 <div class="dashBox"><small>📦 Αξία αποθήκης</small><b id="dInventoryValue">0,00 €</b></div>
 <div class="dashBox"><small>⏳ Εκκρεμείς εργασίες</small><b id="dPending">0</b></div>
 </div><h4>🔔 Ειδοποιήσεις</h4><div id="dashboardAlerts"><small>Φόρτωση...</small></div></div>
@@ -557,14 +557,18 @@ kg.textContent=k+' kg';sold.textContent=sk+' kg';const byGrade={A:0,B:0,SKARTA:0
 // v3.0 Dashboard
 if(document.getElementById('dIncome')){
  dIncome.textContent=euro(i);dExpense.textContent=euro(e);dProfit.textContent=euro(i-e);dProduction.textContent=k.toLocaleString('el-GR')+' kg';dAvgPrice.textContent=sk?euro(i/sk):'—';dCostKg.textContent=k?euro(e/k):'—';dGradeA.textContent=byGrade.A.toLocaleString('el-GR')+' kg';dGradeB.textContent=byGrade.B.toLocaleString('el-GR')+' kg';dGradeS.textContent=byGrade.SKARTA.toLocaleString('el-GR')+' kg';
- const [cr,pr,asr,ir]=await Promise.all([sb.from('customers').select('*'),sb.from('payments').select('*'),sb.from('sales').select('*'),sb.from('inventory').select('*')]);
- if(!cr.error&&!pr.error&&!asr.error&&!ir.error){
+ const [cr,pr,asr,ir,supr,pir,piir,spp]=await Promise.all([sb.from('customers').select('*'),sb.from('payments').select('*'),sb.from('sales').select('*'),sb.from('inventory').select('*'),sb.from('suppliers').select('*'),sb.from('purchase_invoices').select('*'),sb.from('purchase_invoice_items').select('*'),sb.from('supplier_payments').select('*')]);
+ if(!cr.error&&!pr.error&&!asr.error&&!ir.error&&!supr.error&&!pir.error&&!piir.error&&!spp.error){
   const salesByName={};(asr.data||[]).forEach(x=>{const n=(x.buyer||'').trim();if(n)salesByName[n]=(salesByName[n]||0)+Number(x.kg||0)*Number(x.price_per_kg||0)});
   const paidById={};(pr.data||[]).forEach(x=>paidById[x.customer_id]=(paidById[x.customer_id]||0)+Number(x.amount||0));
   const balances=(cr.data||[]).reduce((z,x)=>z+Math.max(0,(salesByName[x.name]||0)-(paidById[x.id]||0)),0);
   const invValue=(ir.data||[]).reduce((z,x)=>z+Number(x.quantity||0)*Number(x.unit_cost||0),0);
   const pending=(d.data||[]).filter(x=>x.status==='pending'||x.scheduled===true);
-  dBalances.textContent=euro(balances);dInventoryValue.textContent=euro(invValue);dPending.textContent=pending.length.toLocaleString('el-GR');
+  const itemsByInvoice={};(piir.data||[]).forEach(x=>(itemsByInvoice[x.invoice_id]??=[]).push(x));
+  const purchasesBySupplier={};(pir.data||[]).forEach(h=>{const n=(h.supplier||'').trim();if(n)purchasesBySupplier[n]=(purchasesBySupplier[n]||0)+(itemsByInvoice[h.id]||[]).reduce((a,x)=>a+Number(x.quantity||0)*Number(x.unit_cost||0),0)});
+  const supplierPaid={};(spp.data||[]).forEach(x=>{const n=(x.supplier||'').trim();if(n)supplierPaid[n]=(supplierPaid[n]||0)+Number(x.amount||0)});
+  const supplierDebt=(supr.data||[]).reduce((z,x)=>z+Math.max(0,(purchasesBySupplier[x.name]||0)-(supplierPaid[x.name]||0)),0);
+  dBalances.textContent=euro(balances);if(document.getElementById('dSupplierDebt'))dSupplierDebt.textContent=euro(supplierDebt);if(document.getElementById('dDebtNet'))dDebtNet.textContent=euro(balances-supplierDebt);dInventoryValue.textContent=euro(invValue);dPending.textContent=pending.length.toLocaleString('el-GR');
   const low=(ir.data||[]).filter(x=>Number(x.quantity||0)<=5);const alerts=[];
   const now=new Date();now.setHours(0,0,0,0);const tomorrow=new Date(now);tomorrow.setDate(tomorrow.getDate()+1);
   const ymd=z=>`${z.getFullYear()}-${String(z.getMonth()+1).padStart(2,'0')}-${String(z.getDate()).padStart(2,'0')}`;
@@ -575,6 +579,7 @@ if(document.getElementById('dIncome')){
   if(pending.length&&!overdue.length&&!dueTomorrow.length)alerts.push(`<div class="dashAlert" onclick="showPage('calendar')">⏳ <b>${pending.length}</b> εκκρεμ${pending.length===1?'ής εργασία':'είς εργασίες'} στο επιλεγμένο αγροτεμάχιο.<br><small>Πάτησε για το Ημερολόγιο</small></div>`);
   if(low.length)alerts.push(`<div class="dashAlert" onclick="showPage('inventory')">📦 Χαμηλό απόθεμα (≤ 5 μονάδες): ${low.slice(0,4).map(x=>esc(x.name)+' ('+Number(x.quantity).toLocaleString('el-GR')+' '+esc(x.unit)+')').join(', ')}${low.length>4?' …':''}<br><small>Πάτησε για την Αποθήκη</small></div>`);
   if(balances>0)alerts.push(`<div class="dashAlert" onclick="showPage('payments')">💳 Συνολικά ανεξόφλητα υπόλοιπα πελατών: <b>${euro(balances)}</b><br><small>Πάτησε για τις Πληρωμές</small></div>`);
+  if(supplierDebt>0)alerts.push(`<div class="dashAlert" onclick="showPage('suppliers')">🏪 Συνολικές οφειλές σε προμηθευτές: <b>${euro(supplierDebt)}</b><br><small>Πάτησε για τους Προμηθευτές</small></div>`);
   dashboardAlerts.innerHTML=alerts.join('')||'<div class="dashOk">✅ Δεν υπάρχουν ενεργές ειδοποιήσεις.</div>';
  }
 }
