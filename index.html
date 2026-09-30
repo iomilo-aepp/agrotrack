@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AgroTrack v2.8</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>AgroTrack v2.8.1</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -277,7 +277,8 @@ const I18N={
 let appLang='el';localStorage.setItem('agrotrack_lang','el');
 function setLang(lang){appLang='el';document.documentElement.lang='el';}
 
-const sb=supabase.createClient('https://yaoumcvuzvzrdcnmpmhv.supabase.co','sb_publishable_N9tUlIyCPO9wgPg42MsppQ__PRnSuax');let signup=false,user=null;
+const sb=supabase.createClient('https://yaoumcvuzvzrdcnmpmhv.supabase.co','sb_publishable_N9tUlIyCPO9wgPg42MsppQ__PRnSuax');function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+let signup=false,user=null;
 const euro=n=>new Intl.NumberFormat('el-GR',{style:'currency',currency:'EUR'}).format(n||0);
 function toggleAuth(){signup=!signup;authTitle.textContent=signup?'Εγγραφή':'Σύνδεση';nameBox.classList.toggle('hidden',!signup);authBtn.textContent=signup?'Δημιουργία λογαριασμού':'Σύνδεση';toggleBtn.textContent=signup?'Έχω λογαριασμό — Σύνδεση':'Δεν έχω λογαριασμό — Εγγραφή'}
 async function submitAuth(){msg.textContent='';let r=signup?await sb.auth.signUp({email:email.value,password:pass.value,options:{data:{full_name:name.value}}}):await sb.auth.signInWithPassword({email:email.value,password:pass.value});if(r.error)return msg.textContent=r.error.message;if(r.data.session)enter(r.data.user);else msg.textContent='Έλεγξε το email σου για επιβεβαίωση και μετά κάνε σύνδεση.'}
