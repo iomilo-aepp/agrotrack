@@ -1,6 +1,6 @@
 {
-  "name":"AgroTrack",
-  "short_name":"AgroTrack",
+  "name":"GeoFylo",
+  "short_name":"GeoFylo",
   "description":"Ψηφιακή καταγραφή και παρακολούθηση αγροτικής παραγωγής",
   "start_url":"./",
   "scope":"./",
