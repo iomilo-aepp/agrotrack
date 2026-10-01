@@ -352,7 +352,7 @@ const BACKUP_TABLES=['profiles','seasons','greenhouses','expenses','harvests','s
 async function downloadFullBackup(){
  const m=document.getElementById('dataManageMsg');if(m)m.textContent='Δημιουργία backup...';
  try{
-  const data={app:'GeoFylo',version:'4.1.7',created_at:new Date().toISOString(),user_id:user.id,settings:{overdue_days:localStorage.getItem('geofylo_overdue_days')||'30'},tables:{}};
+  const data={app:'GeoFylo',version:'4.1.8',created_at:new Date().toISOString(),user_id:user.id,settings:{overdue_days:localStorage.getItem('geofylo_overdue_days')||'30'},tables:{}};
   for(const t of BACKUP_TABLES){let q=sb.from(t).select('*');q=(t==='profiles')?q.eq('id',user.id):q.eq('user_id',user.id);const r=await q;if(r.error)throw new Error(t+': '+r.error.message);data.tables[t]=r.data||[]}
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='GeoFylo_Backup_'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);if(m)m.textContent='✅ Το backup δημιουργήθηκε.';
  }catch(e){if(m)m.textContent='❌ Αποτυχία backup: '+e.message}
@@ -408,7 +408,22 @@ async function deleteAllGeoFyloData(){
   for(const t of order){const r=await sb.from(t).delete().eq('user_id',user.id);if(r.error)throw new Error(t+': '+r.error.message)}
   const pr=await sb.from('profiles').delete().eq('id',user.id);if(pr.error)throw new Error('profiles: '+pr.error.message);
   try{const lr=await sb.storage.from('activity-photos').list(user.id,{limit:1000});if(!lr.error&&lr.data?.length){await sb.storage.from('activity-photos').remove(lr.data.map(x=>user.id+'/'+x.name))}}catch(_e){}
-  localStorage.removeItem('geofylo_overdue_days');if(m)m.textContent='✅ Όλα τα δεδομένα διαγράφηκαν. Ο λογαριασμός σου παραμένει ενεργός.';await loadSeasons();await loadProfile();
+  // Επιβεβαίωση ότι δεν έμειναν εγγραφές πριν ενημερώσουμε τον χρήστη.
+  const remaining=[];
+  for(const t of order){
+   const vr=await sb.from(t).select('id',{count:'exact',head:true}).eq('user_id',user.id);
+   if(vr.error)throw new Error('Έλεγχος '+t+': '+vr.error.message);
+   if((vr.count||0)>0)remaining.push(t+' ('+vr.count+')');
+  }
+  const vpr=await sb.from('profiles').select('id',{count:'exact',head:true}).eq('id',user.id);
+  if(vpr.error)throw new Error('Έλεγχος profiles: '+vpr.error.message);
+  if((vpr.count||0)>0)remaining.push('profiles ('+vpr.count+')');
+  if(remaining.length)throw new Error('Παρέμειναν δεδομένα: '+remaining.join(', '));
+  localStorage.removeItem('geofylo_overdue_days');
+  if(m)m.textContent='✅ Όλα τα δεδομένα διαγράφηκαν και επιβεβαιώθηκε ότι δεν έμειναν εγγραφές. Ανανέωση...';
+  // Η παλιά έκδοση άφηνε τα προηγούμενα ποσά ζωγραφισμένα στο Dashboard επειδή
+  // το dash() σταματά όταν δεν υπάρχει πλέον αγροτεμάχιο. Πλήρης ανανέωση καθαρίζει το UI.
+  setTimeout(()=>location.reload(),700);
  }catch(e){if(m)m.textContent='❌ Η διαγραφή σταμάτησε: '+e.message+' — όσα είχαν ήδη διαγραφεί δεν επανέρχονται αυτόματα.'}
 }
 async function loadProfile(){
