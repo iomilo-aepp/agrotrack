@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GeoFylo v4.1</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>GeoFylo v4.1.1</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -53,7 +53,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <div class="dashBox"><small>📦 Αξία αποθήκης</small><b id="dInventoryValue">0,00 €</b></div>
 <div class="dashBox"><small>⏳ Εκκρεμείς εργασίες</small><b id="dPending">0</b></div>
 </div>
-<div style="margin-top:12px;padding:10px;border:1px solid #ddd;border-radius:12px"><b>⏰ Ληξιπρόθεσμες οφειλές</b><br><small>Μια ανεξόφλητη κίνηση θεωρείται ληξιπρόθεσμη μετά από:</small><div style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="overdueDays" type="number" min="1" max="365" value="30" style="margin:0;max-width:100px"><span>ημέρες</span><button class="soft" style="width:auto;margin:0" onclick="saveOverdueDays()">Αποθήκευση</button></div></div>
+<div style="margin-top:12px;padding:10px;border:1px solid #ddd;border-radius:12px"><b>⏰ Ληξιπρόθεσμες οφειλές</b><br><small>Μια ανεξόφλητη κίνηση θεωρείται ληξιπρόθεσμη μετά από:</small><div style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="overdueDays" type="number" min="1" max="365" value="30" style="margin:0;max-width:100px"><span>ημέρες</span><button class="soft" style="width:auto;margin:0" onclick="saveOverdueDays()">Αποθήκευση</button></div><small id="overdueSaveStatus" style="display:block;margin-top:6px"></small></div>
 <h4>🔔 Ειδοποιήσεις</h4><div id="dashboardAlerts"><small>Φόρτωση...</small></div></div>
 <div class="card"><h3>Καλλιεργητική περίοδος</h3><select id="season" onchange="loadGH()"></select><input id="newSeason" placeholder="π.χ. 2026–27"><button onclick="addSeason()">+ Περίοδος</button>
 <div class="grid"><button class="soft" onclick="renameSeason()">✏️ Μετονομασία περιόδου</button><button class="danger" onclick="deleteSeason()">🗑️ Διαγραφή περιόδου</button></div></div>
@@ -566,7 +566,19 @@ async function deleteGH(){
  if(r.error)return alert(r.error.message);await loadGH();
 }
 function getOverdueDays(){const n=Number(localStorage.getItem('geofylo_overdue_days')||30);return Number.isFinite(n)&&n>0?n:30}
-function saveOverdueDays(){const el=document.getElementById('overdueDays');const n=Math.max(1,Math.min(365,Number(el?.value)||30));localStorage.setItem('geofylo_overdue_days',String(n));if(el)el.value=n;dash()}
+function saveOverdueDays(){
+ const el=document.getElementById('overdueDays');
+ const raw=Number(el?.value);
+ const n=Math.max(1,Math.min(365,Number.isFinite(raw)&&raw>0?Math.round(raw):30));
+ try{
+  localStorage.setItem('geofylo_overdue_days',String(n));
+  if(el)el.value=String(n);
+  const st=document.getElementById('overdueSaveStatus');
+  if(st){st.textContent='✅ Αποθηκεύτηκε: '+n+' ημέρες';setTimeout(()=>{if(document.getElementById('overdueSaveStatus'))document.getElementById('overdueSaveStatus').textContent=''},2500)}
+  // Ενημέρωση των ειδοποιήσεων χωρίς να ξαναγράφουμε το πεδίο ρύθμισης.
+  setTimeout(()=>dash(),50);
+ }catch(err){alert('Δεν ήταν δυνατή η αποθήκευση της ρύθμισης στη συσκευή.');}
+}
 function overdueResidual(charges,payments,days){
  const cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-days);
  let credit=Math.max(0,Number(payments)||0),sum=0,count=0,oldest=null;
