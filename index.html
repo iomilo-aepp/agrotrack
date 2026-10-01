@@ -17,7 +17,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.2 • Cloud + PIN</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.2.2 • Cloud + PIN</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
@@ -161,6 +161,15 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <label>📍 Περιοχή<input id="profileArea" placeholder="π.χ. Τυμπάκι, Ηράκλειο"></label>
 <button id="saveProfileBtn" onclick="saveProfile()">💾 Αποθήκευση</button>
 <small id="profileMsg"></small>
+</div>
+<div class="card">
+<h3>🔐 Γρήγορη είσοδος με PIN</h3>
+<small id="pinSettingsStatus">Έλεγχος PIN...</small>
+<div style="margin-top:10px">
+<button id="pinSetBtn" onclick="changePinFromProfile()">🔢 Ορισμός / Αλλαγή PIN</button>
+<button id="pinDisableBtn" class="soft" onclick="disablePinFromProfile()">🚫 Απενεργοποίηση PIN</button>
+</div>
+<small>Ο 4ψήφιος PIN ισχύει μόνο σε αυτή τη συσκευή. Το email και ο κωδικός λογαριασμού παραμένουν τα στοιχεία ασφαλούς σύνδεσης.</small>
 </div>
 <div class="card" style="border:1px solid #e6caca">
 <h3>⚠️ Διαχείριση δεδομένων</h3>
@@ -383,7 +392,20 @@ async function setupPin(u){
  if(p===null)return true;
  p=String(p).trim();if(!/^\d{4}$/.test(p)){alert('Ο PIN πρέπει να έχει ακριβώς 4 ψηφία.');return setupPin(u)}
  let p2=prompt('Ξαναγράψε τον 4ψήφιο PIN:');if(p2!==p){alert('Οι PIN δεν ταιριάζουν. Δοκίμασε ξανά.');return setupPin(u)}
- await savePin(p,u);alert('✅ Ο PIN αποθηκεύτηκε σε αυτή τη συσκευή.');return true
+ await savePin(p,u);alert('✅ Ο PIN αποθηκεύτηκε σε αυτή τη συσκευή.');updatePinSettingsUI();return true
+}
+function updatePinSettingsUI(){
+ const st=document.getElementById('pinSettingsStatus'),dis=document.getElementById('pinDisableBtn'),set=document.getElementById('pinSetBtn');
+ if(!st||!user)return;const has=!!localStorage.getItem(pinKey(user));
+ st.textContent=has?'✅ Το PIN είναι ενεργό σε αυτή τη συσκευή.':'ℹ️ Δεν έχει οριστεί PIN σε αυτή τη συσκευή.';
+ if(dis)dis.classList.toggle('hidden',!has);if(set)set.textContent=has?'🔄 Αλλαγή PIN':'🔢 Ορισμός PIN';
+}
+async function changePinFromProfile(){if(!user)return;await setupPin(user);updatePinSettingsUI()}
+function disablePinFromProfile(){
+ if(!user)return;if(!localStorage.getItem(pinKey(user))){updatePinSettingsUI();return}
+ if(!confirm('Να απενεργοποιηθεί η γρήγορη είσοδος με PIN σε αυτή τη συσκευή;'))return;
+ localStorage.removeItem(pinKey(user));localStorage.removeItem(pinFailKey(user));localStorage.removeItem(pinLockKey(user));
+ updatePinSettingsUI();alert('Το PIN απενεργοποιήθηκε. Στην επόμενη είσοδο θα χρησιμοποιήσεις email και κωδικό.');
 }
 function showPinScreen(u){user=u;main.classList.add('hidden');auth.classList.remove('hidden');emailAuthBox.classList.add('hidden');pinAuthBox.classList.remove('hidden');pinUserLabel.textContent=u.user_metadata?.full_name||u.email||'';pinInput.value='';msg.textContent='';setTimeout(()=>pinInput.focus(),100)}
 function showEmailScreen(){pinAuthBox.classList.add('hidden');emailAuthBox.classList.remove('hidden');msg.textContent=''}
@@ -471,6 +493,7 @@ async function deleteAllGeoFyloData(){
  }catch(e){if(m)m.textContent='❌ Η διαγραφή σταμάτησε: '+e.message+' — όσα είχαν ήδη διαγραφεί δεν επανέρχονται αυτόματα.'}
 }
 async function loadProfile(){
+ updatePinSettingsUI();
  const m=document.getElementById('profileMsg');if(m)m.textContent='';
  const r=await sb.from('profiles').select('full_name,phone,farm_name,area').eq('id',user.id).maybeSingle();
  if(r.error){if(m)m.textContent='Δεν φορτώθηκε το προφίλ: '+r.error.message;return}
