@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GeoFylo v4.1.6</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>GeoFylo v4.2</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -17,10 +17,11 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.1.13 • Cloud</small><div class="card">
-<h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.2 • Cloud + PIN</small><div class="card">
+<div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
-<button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button>
+<button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
+<div id="pinAuthBox" class="hidden" style="text-align:center"><h2>🔐 Γρήγορη είσοδος</h2><small id="pinUserLabel"></small><input id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" style="text-align:center;font-size:30px;letter-spacing:12px" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)" onkeydown="if(event.key==='Enter')unlockWithPin()"><button onclick="unlockWithPin()">Ξεκλείδωμα</button><button class="soft" onclick="useEmailLogin()">Σύνδεση με email / άλλο λογαριασμό</button><small>Ο PIN ισχύει μόνο σε αυτή τη συσκευή.</small></div>
 <p id="msg"></p></div></div>
 
 <div id="main" class="hidden"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small id="who"></small><nav class="bottomNav"><button id="nav-home" class="active" onclick="showPage('home')"><span class="ico">🏠</span>Αρχική</button><button id="nav-entry" onclick="showPage('entry')"><span class="ico">➕</span>Καταχώρηση</button><button id="nav-movements" onclick="showPage('movements')"><span class="ico">🧾</span>Κινήσεις</button><button id="nav-calendar" onclick="showPage('calendar')"><span class="ico">📅</span>Ημερολόγιο</button><button id="nav-reports" onclick="showPage('reports')"><span class="ico">📊</span>Αναφορές</button><button id="nav-customers" onclick="showPage('customers')"><span class="ico">👥</span>Πελάτες</button><button id="nav-payments" onclick="showPage('payments')"><span class="ico">💳</span>Πληρωμές</button><button id="nav-inventory" onclick="showPage('inventory')"><span class="ico">📦</span>Αποθήκη</button><button id="nav-suppliers" onclick="showPage('suppliers')"><span class="ico">🏪</span>Προμηθευτές</button><button id="nav-cashflow" onclick="showPage('cashflow')"><span class="ico">💰</span>Ταμείο</button><button id="nav-profile" onclick="showPage('profile')"><span class="ico">👤</span>Προφίλ</button></nav>
@@ -372,9 +373,25 @@ const sb=supabase.createClient('https://yaoumcvuzvzrdcnmpmhv.supabase.co','sb_pu
 let signup=false,user=null;
 const euro=n=>new Intl.NumberFormat('el-GR',{style:'currency',currency:'EUR'}).format(n||0);
 function toggleAuth(){signup=!signup;authTitle.textContent=signup?'Εγγραφή':'Σύνδεση';nameBox.classList.toggle('hidden',!signup);authBtn.textContent=signup?'Δημιουργία λογαριασμού':'Σύνδεση';toggleBtn.textContent=signup?'Έχω λογαριασμό — Σύνδεση':'Δεν έχω λογαριασμό — Εγγραφή'}
-async function submitAuth(){msg.textContent='';let r=signup?await sb.auth.signUp({email:email.value,password:pass.value,options:{data:{full_name:name.value}}}):await sb.auth.signInWithPassword({email:email.value,password:pass.value});if(r.error)return msg.textContent=r.error.message;if(r.data.session)enter(r.data.user);else msg.textContent='Έλεγξε το email σου για επιβεβαίωση και μετά κάνε σύνδεση.'}
+const pinKey=u=>'geofylo_pin_'+u.id;
+const pinFailKey=u=>'geofylo_pin_fail_'+u.id;
+const pinLockKey=u=>'geofylo_pin_lock_'+u.id;
+async function pinHash(pin,u){const b=new TextEncoder().encode('GeoFylo|'+u.id+'|'+pin);const h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function savePin(pin,u){localStorage.setItem(pinKey(u),await pinHash(pin,u));localStorage.removeItem(pinFailKey(u));localStorage.removeItem(pinLockKey(u))}
+async function setupPin(u){
+ let p=prompt('Όρισε έναν 4ψήφιο PIN για γρήγορη είσοδο σε αυτή τη συσκευή:');
+ if(p===null)return true;
+ p=String(p).trim();if(!/^\d{4}$/.test(p)){alert('Ο PIN πρέπει να έχει ακριβώς 4 ψηφία.');return setupPin(u)}
+ let p2=prompt('Ξαναγράψε τον 4ψήφιο PIN:');if(p2!==p){alert('Οι PIN δεν ταιριάζουν. Δοκίμασε ξανά.');return setupPin(u)}
+ await savePin(p,u);alert('✅ Ο PIN αποθηκεύτηκε σε αυτή τη συσκευή.');return true
+}
+function showPinScreen(u){user=u;main.classList.add('hidden');auth.classList.remove('hidden');emailAuthBox.classList.add('hidden');pinAuthBox.classList.remove('hidden');pinUserLabel.textContent=u.user_metadata?.full_name||u.email||'';pinInput.value='';msg.textContent='';setTimeout(()=>pinInput.focus(),100)}
+function showEmailScreen(){pinAuthBox.classList.add('hidden');emailAuthBox.classList.remove('hidden');msg.textContent=''}
+async function useEmailLogin(){const r=await sb.auth.getSession();if(r.data.session)await sb.auth.signOut();user=null;showEmailScreen();email.value='';pass.value=''}
+async function unlockWithPin(){if(!user)return;msg.textContent='';const lock=Number(localStorage.getItem(pinLockKey(user))||0);if(lock>Date.now()){msg.textContent='🔒 Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά σε '+Math.ceil((lock-Date.now())/1000)+' δευτ.';return}const p=pinInput.value;if(!/^\d{4}$/.test(p)){msg.textContent='Γράψε τον 4ψήφιο PIN.';return}const ok=(await pinHash(p,user))===localStorage.getItem(pinKey(user));if(!ok){let n=Number(localStorage.getItem(pinFailKey(user))||0)+1;if(n>=5){localStorage.setItem(pinLockKey(user),String(Date.now()+30000));localStorage.setItem(pinFailKey(user),'0');msg.textContent='🔒 5 λάθος προσπάθειες. Κλείδωμα για 30 δευτερόλεπτα.'}else{localStorage.setItem(pinFailKey(user),String(n));msg.textContent='❌ Λάθος PIN. Απομένουν '+(5-n)+' προσπάθειες.'}pinInput.value='';return}localStorage.removeItem(pinFailKey(user));localStorage.removeItem(pinLockKey(user));await enter(user)}
+async function submitAuth(){msg.textContent='';let r=signup?await sb.auth.signUp({email:email.value,password:pass.value,options:{data:{full_name:name.value}}}):await sb.auth.signInWithPassword({email:email.value,password:pass.value});if(r.error)return msg.textContent=r.error.message;if(r.data.session){if(!localStorage.getItem(pinKey(r.data.user)))await setupPin(r.data.user);await enter(r.data.user)}else msg.textContent='Έλεγξε το email σου για επιβεβαίωση και μετά κάνε σύνδεση.'}
 async function enter(u){user=u;auth.classList.add('hidden');main.classList.remove('hidden');who.textContent=u.user_metadata?.full_name||u.email;await loadSeasons();entryFields()}
-async function logout(){await sb.auth.signOut();location.reload()}
+async function logout(){if(user)localStorage.removeItem(pinKey(user));await sb.auth.signOut();location.reload()}
 const BACKUP_TABLES=['profiles','seasons','greenhouses','expenses','harvests','sales','activities','customers','payments','inventory','inventory_usage','inventory_purchases','purchase_invoices','purchase_invoice_items','suppliers','supplier_payments'];
 async function downloadFullBackup(){
  const m=document.getElementById('dataManageMsg');if(m)m.textContent='Δημιουργία backup...';
@@ -1061,7 +1078,7 @@ function startVoice(){
  r.onerror=e=>voiceMsg.textContent=' Σφάλμα μικροφώνου: '+e.error;
  r.onend=()=>voiceBtn.disabled=false;r.start();
 }
-(async()=>{if(document.getElementById('calMonth'))calMonth.value=new Date().toISOString().slice(0,7);let r=await sb.auth.getSession();if(r.data.session)enter(r.data.session.user)})();
+(async()=>{if(document.getElementById('calMonth'))calMonth.value=new Date().toISOString().slice(0,7);let r=await sb.auth.getSession();if(r.data.session){const u=r.data.session.user;if(localStorage.getItem(pinKey(u)))showPinScreen(u);else{await setupPin(u);await enter(u)}}else showEmailScreen()})();
 </script><script>
 addTabRefreshButtons();
 
