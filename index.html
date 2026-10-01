@@ -10,14 +10,14 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 @media(max-width:700px){.app{padding:14px}.bottomNav{display:flex;overflow-x:auto;overflow-y:hidden;gap:4px;padding:6px 4px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none}.bottomNav::-webkit-scrollbar{display:none}.bottomNav button{flex:0 0 82px;min-width:82px;scroll-snap-align:start;padding:8px 4px;font-size:11px}.ico{font-size:20px}}
 
 .page{position:relative}.tabRefresh{position:sticky;top:8px;z-index:30;float:right;width:auto!important;margin:8px 8px 4px 8px!important;padding:8px 12px!important;border-radius:10px!important}.tabRefresh::after{content:"";display:block;clear:both}@media(max-width:600px){.tabRefresh{padding:7px 10px!important;font-size:14px}}
-</style><meta name="theme-color" content="#216b3a">
+.todayGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}.todayBox{background:#f7faf6;border:1px solid #e4ece4;border-radius:12px;padding:10px}.todayBox b{display:block;font-size:20px;margin-top:3px}.todayActions{margin-top:10px}.todayAction{padding:10px 0;border-bottom:1px solid #edf0ed;cursor:pointer}.todayAction:last-child{border-bottom:0}.todayAction small{display:block;margin-top:2px}.todayOk{padding:12px;border-radius:12px;background:#edf7ef;margin-top:10px}</style><meta name="theme-color" content="#216b3a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="GeoFylo">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.2.4 • Cloud + PIN</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.3 • Έξυπνη Αρχική</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
@@ -25,7 +25,17 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <p id="msg"></p></div></div>
 
 <div id="main" class="hidden"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small id="who"></small><nav class="bottomNav"><button id="nav-home" class="active" onclick="showPage('home')"><span class="ico">🏠</span>Αρχική</button><button id="nav-entry" onclick="showPage('entry')"><span class="ico">➕</span>Καταχώρηση</button><button id="nav-movements" onclick="showPage('movements')"><span class="ico">🧾</span>Κινήσεις</button><button id="nav-calendar" onclick="showPage('calendar')"><span class="ico">📅</span>Ημερολόγιο</button><button id="nav-reports" onclick="showPage('reports')"><span class="ico">📊</span>Αναφορές</button><button id="nav-customers" onclick="showPage('customers')"><span class="ico">👥</span>Πελάτες</button><button id="nav-payments" onclick="showPage('payments')"><span class="ico">💳</span>Πληρωμές</button><button id="nav-inventory" onclick="showPage('inventory')"><span class="ico">📦</span>Αποθήκη</button><button id="nav-suppliers" onclick="showPage('suppliers')"><span class="ico">🏪</span>Προμηθευτές</button><button id="nav-cashflow" onclick="showPage('cashflow')"><span class="ico">💰</span>Ταμείο</button><button id="nav-profile" onclick="showPage('profile')"><span class="ico">👤</span>Προφίλ</button></nav>
-<div id="page-home" class="page active"><div class="card" id="producerHome">
+<div id="page-home" class="page active"><div class="card" id="todayHomeCard">
+<h2 style="margin:0">☀️ Σήμερα στο GeoFylo</h2>
+<small>Ό,τι χρειάζεται την προσοχή σου με μια ματιά.</small>
+<div class="todayGrid">
+<div class="todayBox" onclick="showPage('calendar')"><small>📅 Εργασίες σήμερα</small><b id="todayTasks">0</b></div>
+<div class="todayBox" onclick="showPage('inventory')"><small>📦 Χαμηλό απόθεμα</small><b id="todayLowStock">0</b></div>
+<div class="todayBox" onclick="showPage('customers')"><small>💳 Ληξιπρόθεσμα πελατών</small><b id="todayCustomerOverdue">0,00 €</b></div>
+<div class="todayBox" onclick="showPage('suppliers')"><small>🏪 Ληξιπρόθεσμα προμηθευτών</small><b id="todaySupplierOverdue">0,00 €</b></div>
+</div>
+<div id="todayActions" class="todayActions"><small>Φόρτωση...</small></div>
+</div><div class="card" id="producerHome">
 <h2 style="margin:0" id="tQuick">🌱 Γρήγορη καταχώρηση</h2>
 <small id="tChoose">Επίλεξε τι θέλεις να καταχωρήσεις</small>
 <div class="quickGrid">
@@ -814,6 +824,20 @@ if(document.getElementById('dIncome')){
   const ageDays=date=>{if(!date)return 0;const a=new Date(date+'T12:00:00'),b=new Date();b.setHours(12,0,0,0);return Math.max(0,Math.floor((b-a)/86400000))};
   (cr.data||[]).forEach(cu=>{const charges=(asr.data||[]).filter(x=>(x.buyer||'').trim()===cu.name.trim()).map(x=>({date:x.sale_date,amount:Number(x.kg||0)*Number(x.price_per_kg||0)}));const r=overdueResidual(charges,paidById[cu.id]||0,overdueDaysValue);if(r.sum>0){overdueCustomerTotal+=r.sum;overdueCustomerCount++;overdueCustomers.push({id:cu.id,name:cu.name,sum:r.sum,days:ageDays(r.oldest)})}});
   (supr.data||[]).forEach(su=>{const charges=(pir.data||[]).filter(h=>(h.supplier||'').trim()===su.name.trim()).map(h=>({date:h.invoice_date,amount:(itemsByInvoice[h.id]||[]).reduce((a,x)=>a+Number(x.quantity||0)*Number(x.unit_cost||0),0)}));const r=overdueResidual(charges,supplierPaid[su.name]||0,overdueDaysValue);if(r.sum>0){overdueSupplierTotal+=r.sum;overdueSupplierCount++;overdueSuppliers.push({id:su.id,name:su.name,sum:r.sum,days:ageDays(r.oldest)})}});
+  // v4.3 Έξυπνη Αρχική: σημερινές προτεραιότητες
+  const todayKey=ymd(new Date());
+  const todayPending=pending.filter(x=>x.activity_date===todayKey);
+  if(document.getElementById('todayTasks'))todayTasks.textContent=todayPending.length.toLocaleString('el-GR');
+  if(document.getElementById('todayLowStock'))todayLowStock.textContent=low.length.toLocaleString('el-GR');
+  if(document.getElementById('todayCustomerOverdue'))todayCustomerOverdue.textContent=euro(overdueCustomerTotal);
+  if(document.getElementById('todaySupplierOverdue'))todaySupplierOverdue.textContent=euro(overdueSupplierTotal);
+  const priorities=[];
+  if(todayPending.length)priorities.push(`<div class="todayAction" onclick="showPage('calendar')"><b>📅 ${todayPending.length} εργασία${todayPending.length===1?'':'ες'} για σήμερα</b><small>${todayPending.slice(0,3).map(x=>esc(x.activity_type)).join(', ')}${todayPending.length>3?' …':''}</small></div>`);
+  if(low.length)priorities.push(`<div class="todayAction" onclick="showPage('inventory')"><b>📦 ${low.length} είδο${low.length===1?'ς':'η'} με χαμηλό απόθεμα</b><small>${low.slice(0,3).map(x=>esc(x.name)).join(', ')}${low.length>3?' …':''}</small></div>`);
+  if(overdueCustomerTotal>0)priorities.push(`<div class="todayAction" onclick="showPage('customers')"><b>💳 Ληξιπρόθεσμα πελατών ${euro(overdueCustomerTotal)}</b><small>${overdueCustomerCount} πελάτ${overdueCustomerCount===1?'ης':'ες'} χρειάζονται έλεγχο</small></div>`);
+  if(overdueSupplierTotal>0)priorities.push(`<div class="todayAction" onclick="showPage('suppliers')"><b>🏪 Ληξιπρόθεσμα προμηθευτών ${euro(overdueSupplierTotal)}</b><small>${overdueSupplierCount} προμηθευτ${overdueSupplierCount===1?'ής':'ές'} χρειάζονται έλεγχο</small></div>`);
+  const ta=document.getElementById('todayActions');if(ta)ta.innerHTML=priorities.join('')||'<div class="todayOk">✅ Δεν υπάρχει κάτι επείγον για σήμερα.</div>';
+
   dBalances.textContent=euro(balances);if(document.getElementById('dSupplierDebt'))dSupplierDebt.textContent=euro(supplierDebt);if(document.getElementById('dDebtNet'))dDebtNet.textContent=euro(balances-supplierDebt);dInventoryValue.textContent=euro(invValue);dPending.textContent=pending.length.toLocaleString('el-GR');
   const low=(ir.data||[]).filter(x=>Number(x.quantity||0)<=5);const alerts=[];
   const now=new Date();now.setHours(0,0,0,0);const tomorrow=new Date(now);tomorrow.setDate(tomorrow.getDate()+1);
