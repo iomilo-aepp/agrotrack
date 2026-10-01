@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GeoFylo v4.1.3</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>GeoFylo v4.1.4</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -431,9 +431,16 @@ async function loadSuppliers(){
 async function showSupplierCard(id){
  const box=document.getElementById('supplierCard');if(!box||!user)return;box.classList.remove('hidden');box.innerHTML='<small>Φόρτωση καρτέλας...</small>';
  const [sr,hr,ir,pr]=await Promise.all([sb.from('suppliers').select('*').eq('id',id).single(),sb.from('purchase_invoices').select('*').order('invoice_date',{ascending:false}),sb.from('purchase_invoice_items').select('*'),sb.from('supplier_payments').select('*').order('payment_date',{ascending:false})]);
- if(sr.error||hr.error||ir.error||pr.error){box.innerHTML='<small>Σφάλμα φόρτωσης καρτέλας.</small>';return}const s=sr.data;const itemsBy={};(ir.data||[]).forEach(x=>(itemsBy[x.invoice_id]??=[]).push(x));const inv=(hr.data||[]).filter(x=>(x.supplier||'').trim()===s.name.trim());const pays=(pr.data||[]).filter(x=>(x.supplier||'').trim()===s.name.trim());const av=inv.reduce((a,h)=>a+(itemsBy[h.id]||[]).reduce((z,x)=>z+Number(x.quantity||0)*Number(x.unit_cost||0),0),0),pv=pays.reduce((a,x)=>a+Number(x.amount||0),0),bal=av-pv;
- const rows=[...inv.map(h=>({date:h.invoice_date,type:'Αγορά',detail:h.document_number?'Παραστατικό '+h.document_number:'Παραστατικό αγοράς',amount:(itemsBy[h.id]||[]).reduce((z,x)=>z+Number(x.quantity||0)*Number(x.unit_cost||0),0),pay:false})),...pays.map(x=>({date:x.payment_date,type:'Πληρωμή',detail:x.payment_method||'',amount:Number(x.amount||0),pay:true}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
- box.innerHTML=`<div class="reportTitle"><h3>📒 Καρτέλα: ${esc(s.name)}</h3><button class="soft" style="width:auto" onclick="supplierCard.classList.add('hidden')">✕</button></div><small>${s.vat_number?'ΑΦΜ '+esc(s.vat_number)+' • ':''}${esc(s.phone||'')}${s.address?' • '+esc(s.address):''}</small><div class="dashGrid"><div class="dashBox"><small>Αγορές</small><b>${euro(av)}</b></div><div class="dashBox"><small>Πληρωμές</small><b>${euro(pv)}</b></div><div class="dashBox"><small>Υπόλοιπο</small><b>${euro(bal)}</b></div><div class="dashBox"><small>Κινήσεις</small><b>${rows.length}</b></div></div><h4>Ιστορικό</h4>${rows.length?rows.map(r=>`<div class="entry"><div class="entryText"><b>${r.pay?'💵':'🧾'} ${r.type}</b><br><small>${new Date(r.date+'T12:00:00').toLocaleDateString('el-GR')} • ${esc(r.detail)}</small></div><b>${r.pay?'-':'+'}${euro(r.amount)}</b></div>`).join(''):'<small>Δεν υπάρχουν κινήσεις.</small>'}`;box.scrollIntoView({behavior:'smooth',block:'start'});
+ if(sr.error||hr.error||ir.error||pr.error){box.innerHTML='<small>Σφάλμα φόρτωσης καρτέλας.</small>';return}
+ const s=sr.data,itemsBy={};(ir.data||[]).forEach(x=>(itemsBy[x.invoice_id]??=[]).push(x));
+ const inv=(hr.data||[]).filter(x=>(x.supplier||'').trim()===s.name.trim());const pays=(pr.data||[]).filter(x=>(x.supplier||'').trim()===s.name.trim());
+ const charges=inv.map(h=>({id:h.id,date:h.invoice_date,document_number:h.document_number||'',amount:(itemsBy[h.id]||[]).reduce((z,x)=>z+Number(x.quantity||0)*Number(x.unit_cost||0),0)}));
+ const av=charges.reduce((a,x)=>a+x.amount,0),pv=pays.reduce((a,x)=>a+Number(x.amount||0),0),bal=av-pv;
+ const open=fifoOpenCharges(charges,pays),openById=Object.fromEntries(open.map(x=>[x.id,x.remaining]));const limit=getOverdueDays();
+ const rows=[...inv.map(h=>{const amount=(itemsBy[h.id]||[]).reduce((z,x)=>z+Number(x.quantity||0)*Number(x.unit_cost||0),0),rem=openById[h.id]||0,days=ageDays(h.invoice_date);return {date:h.invoice_date,type:'Αγορά',detail:h.document_number?'Παραστατικό '+h.document_number:'Παραστατικό αγοράς',amount,pay:false,rem,days,overdue:rem>0&&days>=limit}}),...pays.map(x=>({date:x.payment_date,type:'Πληρωμή',detail:x.payment_method||'',amount:Number(x.amount||0),pay:true}))].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+ const openTotal=open.reduce((a,x)=>a+x.remaining,0),overdueTotal=open.filter(x=>ageDays(x.date)>=limit).reduce((a,x)=>a+x.remaining,0);
+ box.innerHTML=`<div class="reportTitle"><h3>📒 Καρτέλα: ${esc(s.name)}</h3><button class="soft" style="width:auto" onclick="supplierCard.classList.add('hidden')">✕</button></div><small>${s.vat_number?'ΑΦΜ '+esc(s.vat_number)+' • ':''}${esc(s.phone||'')}${s.address?' • '+esc(s.address):''}</small><div class="dashGrid"><div class="dashBox"><small>Αγορές</small><b>${euro(av)}</b></div><div class="dashBox"><small>Πληρωμές</small><b>${euro(pv)}</b></div><div class="dashBox"><small>Ανεξόφλητο</small><b>${euro(openTotal)}</b></div><div class="dashBox"><small>Ληξιπρόθεσμο</small><b>${euro(overdueTotal)}</b></div></div><small>Οι πληρωμές συμψηφίζονται με τις παλαιότερες αγορές πρώτα (FIFO). Όριο: ${limit} ημέρες.</small><h4>Ιστορικό</h4>${rows.length?rows.map(r=>`<div class="entry"><div class="entryText"><b>${r.pay?'💵':'🧾'} ${r.type}</b><br><small>${new Date(r.date+'T12:00:00').toLocaleDateString('el-GR')} • ${esc(r.detail)}</small>${r.pay?'':`<br><small>${r.rem>0?(r.overdue?'🔴':'🟡')+' Ανεξόφλητο '+euro(r.rem)+' • '+r.days+' ημέρες':'✅ Εξοφλημένο'}</small>`}</div><b>${r.pay?'-':'+'}${euro(r.amount)}</b></div>`).join(''):'<small>Δεν υπάρχουν κινήσεις.</small>'}`;
+ box.scrollIntoView({behavior:'smooth',block:'start'});
 }
 async function saveSupplier(){const name=supplierName.value.trim();if(!name)return alert('Συμπλήρωσε επωνυμία προμηθευτή.');const payload={user_id:user.id,name,vat_number:supplierVat.value.trim()||null,phone:supplierPhone.value.trim()||null,email:supplierEmail.value.trim()||null,address:supplierAddress.value.trim()||null,note:supplierNote.value.trim()||null};const r=editingSupplierId?await sb.from('suppliers').update(payload).eq('id',editingSupplierId):await sb.from('suppliers').insert(payload);if(r.error)return alert(r.error.message);cancelSupplierEdit();await loadSuppliers()}
 function editSupplier(x){editingSupplierId=x.id;supplierName.value=x.name||'';supplierVat.value=x.vat_number||'';supplierPhone.value=x.phone||'';supplierEmail.value=x.email||'';supplierAddress.value=x.address||'';supplierNote.value=x.note||'';saveSupplierBtn.textContent='💾 Αποθήκευση αλλαγών';cancelSupplierBtn.classList.remove('hidden')}
@@ -581,12 +588,19 @@ function saveOverdueDays(){
   setTimeout(()=>dash(),50);
  }catch(err){alert('Δεν ήταν δυνατή η αποθήκευση της ρύθμισης στη συσκευή.');}
 }
+function fifoOpenCharges(charges,payments){
+ // FIFO: κάθε πληρωμή καλύπτει πρώτα την παλαιότερη ανοικτή χρέωση.
+ // Δεχόμαστε είτε συνολικό ποσό πληρωμών είτε πίνακα πληρωμών.
+ const open=[...charges].filter(x=>x.date&&Number(x.amount)>0).map((x,i)=>({...x,amount:Number(x.amount),remaining:Number(x.amount),_i:i})).sort((a,b)=>a.date.localeCompare(b.date)||a._i-b._i);
+ let credit=Array.isArray(payments)?payments.reduce((a,x)=>a+Math.max(0,Number(x.amount)||0),0):Math.max(0,Number(payments)||0);
+ for(const x of open){if(credit<=0)break;const used=Math.min(credit,x.remaining);x.remaining-=used;credit-=used}
+ return open.filter(x=>x.remaining>0.005);
+}
 function overdueResidual(charges,payments,days){
  const cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-days);
- let credit=Math.max(0,Number(payments)||0),sum=0,count=0,oldest=null;
- const sorted=[...charges].filter(x=>x.date&&Number(x.amount)>0).sort((a,b)=>a.date.localeCompare(b.date));
- for(const x of sorted){let rem=Number(x.amount);const used=Math.min(credit,rem);credit-=used;rem-=used;if(rem>0&&new Date(x.date+'T12:00:00')<=cutoff){sum+=rem;count++;if(!oldest||x.date<oldest)oldest=x.date}}
- return {sum,count,oldest};
+ const open=fifoOpenCharges(charges,payments);let sum=0,count=0,oldest=null;
+ for(const x of open){if(new Date(x.date+'T12:00:00')<=cutoff){sum+=x.remaining;count++;if(!oldest||x.date<oldest)oldest=x.date}}
+ return {sum,count,oldest,open};
 }
 async function dash(){if(!gh.value){const ml=document.getElementById('movementsList');if(ml)ml.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';return}
 let [a,b,c,d]=await Promise.all([sb.from('expenses').select('*').eq('greenhouse_id',gh.value),sb.from('harvests').select('*').eq('greenhouse_id',gh.value),sb.from('sales').select('*').eq('greenhouse_id',gh.value),sb.from('activities').select('*').eq('greenhouse_id',gh.value)]);
@@ -623,7 +637,7 @@ if(document.getElementById('dIncome')){
   if(dueTomorrow.length)alerts.push(`<div class="dashAlert" onclick="showPage('calendar')">⏳ Αύριο: ${dueTomorrow.slice(0,3).map(x=>'<b>'+esc(x.activity_type)+'</b>').join(', ')}${dueTomorrow.length>3?' …':''}<br><small>Πάτησε για το Ημερολόγιο</small></div>`);
   if(pending.length&&!overdue.length&&!dueTomorrow.length)alerts.push(`<div class="dashAlert" onclick="showPage('calendar')">⏳ <b>${pending.length}</b> εκκρεμ${pending.length===1?'ής εργασία':'είς εργασίες'} στο επιλεγμένο αγροτεμάχιο.<br><small>Πάτησε για το Ημερολόγιο</small></div>`);
   if(low.length)alerts.push(`<div class="dashAlert" onclick="showPage('inventory')">📦 Χαμηλό απόθεμα (≤ 5 μονάδες): ${low.slice(0,4).map(x=>esc(x.name)+' ('+Number(x.quantity).toLocaleString('el-GR')+' '+esc(x.unit)+')').join(', ')}${low.length>4?' …':''}<br><small>Πάτησε για την Αποθήκη</small></div>`);
-  // v4.1.3: εμφανίζουμε ΠΑΝΤΑ τα ανεξόφλητα ανά πελάτη/προμηθευτή.
+  // v4.1.4: εμφανίζουμε ΠΑΝΤΑ τα ανεξόφλητα ανά πελάτη/προμηθευτή.
   // Η ρύθμιση ημερών καθορίζει μόνο αν θα σημειωθούν ως ληξιπρόθεσμα.
   const unpaidCustomers=[];
   (cr.data||[]).forEach(cu=>{const charges=(asr.data||[]).filter(x=>(x.buyer||'').trim()===cu.name.trim()).map(x=>({date:x.sale_date,amount:Number(x.kg||0)*Number(x.price_per_kg||0)}));const total=charges.reduce((a,x)=>a+x.amount,0),paid=paidById[cu.id]||0,balance=Math.max(0,total-paid);if(balance>0){const r=overdueResidual(charges,paid,0);unpaidCustomers.push({id:cu.id,name:cu.name,sum:balance,days:ageDays(r.oldest),overdue:ageDays(r.oldest)>=overdueDaysValue})}});
