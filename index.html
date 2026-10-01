@@ -163,6 +163,9 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <h3>⚠️ Διαχείριση δεδομένων</h3>
 <small>Πάρε αντίγραφο των δεδομένων σου πριν από μαζική διαγραφή.</small>
 <button class="soft" onclick="downloadFullBackup()">📦 Λήψη Backup</button>
+<button class="soft" onclick="document.getElementById('restoreBackupFile').click()">♻️ Επαναφορά Backup</button>
+<input id="restoreBackupFile" type="file" accept="application/json,.json" class="hidden" onchange="previewRestoreBackup(this.files[0]);this.value=''">
+<div id="restoreBackupPreview" class="hidden" style="margin-top:10px"></div>
 <button class="danger" onclick="deleteAllGeoFyloData()">🗑️ Διαγραφή όλων των δεδομένων</button>
 <small id="dataManageMsg"></small>
 </div></div>
@@ -349,10 +352,50 @@ const BACKUP_TABLES=['profiles','seasons','greenhouses','expenses','harvests','s
 async function downloadFullBackup(){
  const m=document.getElementById('dataManageMsg');if(m)m.textContent='Δημιουργία backup...';
  try{
-  const data={app:'GeoFylo',version:'4.1.6',created_at:new Date().toISOString(),user_id:user.id,tables:{}};
+  const data={app:'GeoFylo',version:'4.1.7',created_at:new Date().toISOString(),user_id:user.id,settings:{overdue_days:localStorage.getItem('geofylo_overdue_days')||'30'},tables:{}};
   for(const t of BACKUP_TABLES){let q=sb.from(t).select('*');q=(t==='profiles')?q.eq('id',user.id):q.eq('user_id',user.id);const r=await q;if(r.error)throw new Error(t+': '+r.error.message);data.tables[t]=r.data||[]}
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='GeoFylo_Backup_'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);if(m)m.textContent='✅ Το backup δημιουργήθηκε.';
  }catch(e){if(m)m.textContent='❌ Αποτυχία backup: '+e.message}
+}
+let pendingRestoreBackup=null;
+const RESTORE_DELETE_ORDER=['inventory_usage','purchase_invoice_items','inventory_purchases','supplier_payments','payments','activities','expenses','harvests','sales','purchase_invoices','inventory','customers','suppliers','greenhouses','seasons'];
+const RESTORE_INSERT_ORDER=['profiles','seasons','greenhouses','customers','suppliers','inventory','expenses','harvests','sales','activities','payments','supplier_payments','inventory_purchases','purchase_invoices','purchase_invoice_items','inventory_usage'];
+function backupRowCount(b){return BACKUP_TABLES.reduce((n,t)=>n+(Array.isArray(b?.tables?.[t])?b.tables[t].length:0),0)}
+async function previewRestoreBackup(file){
+ const m=document.getElementById('dataManageMsg'),box=document.getElementById('restoreBackupPreview');
+ try{
+  if(!file) return;
+  const raw=await file.text(),b=JSON.parse(raw);
+  if(b?.app!=='GeoFylo'||!b.tables||typeof b.tables!=='object')throw new Error('Το αρχείο δεν είναι έγκυρο GeoFylo Backup.');
+  if(b.user_id!==user.id)throw new Error('Το backup ανήκει σε διαφορετικό λογαριασμό.');
+  for(const t of BACKUP_TABLES)if(!Array.isArray(b.tables[t]||[]))throw new Error('Μη έγκυρα δεδομένα στον πίνακα '+t+'.');
+  pendingRestoreBackup=b;
+  const parts=BACKUP_TABLES.filter(t=>(b.tables[t]||[]).length).map(t=>`${esc(t)}: <b>${b.tables[t].length}</b>`).join(' · ');
+  box.innerHTML=`<div style="padding:10px;border:1px solid #c9d8c9;border-radius:10px"><b>♻️ Έτοιμο για επαναφορά</b><br><small>Backup: ${esc(b.created_at?new Date(b.created_at).toLocaleString('el-GR'):'—')} · ${backupRowCount(b)} εγγραφές</small><br><small>${parts||'Χωρίς εγγραφές'}</small><br><br><button onclick="restoreFullBackup()">✅ Αντικατάσταση & Επαναφορά</button> <button class="soft" onclick="cancelRestoreBackup()">Ακύρωση</button></div>`;
+  box.classList.remove('hidden');if(m)m.textContent='Έλεγξε την προεπισκόπηση και πάτησε Επαναφορά.';
+ }catch(e){pendingRestoreBackup=null;box.classList.add('hidden');box.innerHTML='';if(m)m.textContent='❌ '+e.message}
+}
+function cancelRestoreBackup(){pendingRestoreBackup=null;const b=document.getElementById('restoreBackupPreview');b.classList.add('hidden');b.innerHTML='';const m=document.getElementById('dataManageMsg');if(m)m.textContent='Η επαναφορά ακυρώθηκε.'}
+async function restoreFullBackup(){
+ const b=pendingRestoreBackup,m=document.getElementById('dataManageMsg');if(!b)return;
+ if(!confirm('Η επαναφορά θα ΑΝΤΙΚΑΤΑΣΤΗΣΕΙ όλα τα τωρινά δεδομένα με το Backup. Συνέχεια;'))return;
+ const code=prompt('Για επαναφορά γράψε ακριβώς: ΕΠΑΝΑΦΟΡΑ');if(code!=='ΕΠΑΝΑΦΟΡΑ'){if(m)m.textContent='Η επαναφορά ακυρώθηκε.';return}
+ if(m)m.textContent='♻️ Επαναφορά σε εξέλιξη... Μην κλείσεις την εφαρμογή.';
+ try{
+  // Καθαρισμός τωρινών δεδομένων, από παιδιά προς γονείς.
+  for(const t of RESTORE_DELETE_ORDER){const r=await sb.from(t).delete().eq('user_id',user.id);if(r.error)throw new Error('Διαγραφή '+t+': '+r.error.message)}
+  const pr=await sb.from('profiles').delete().eq('id',user.id);if(pr.error)throw new Error('Διαγραφή profiles: '+pr.error.message);
+  // Εισαγωγή με σειρά εξαρτήσεων. Κρατάμε τα αρχικά IDs ώστε να παραμείνουν σωστά τα FK.
+  for(const t of RESTORE_INSERT_ORDER){
+   let rows=(b.tables[t]||[]).map(x=>({...x}));if(!rows.length)continue;
+   if(t==='profiles')rows=rows.map(x=>({...x,id:user.id}));else rows=rows.map(x=>({...x,user_id:user.id}));
+   const r=await sb.from(t).insert(rows);if(r.error)throw new Error('Επαναφορά '+t+': '+r.error.message);
+  }
+  if(b.settings?.overdue_days)localStorage.setItem('geofylo_overdue_days',String(b.settings.overdue_days));
+  pendingRestoreBackup=null;const box=document.getElementById('restoreBackupPreview');box.classList.add('hidden');box.innerHTML='';
+  if(m)m.textContent='✅ Η επαναφορά ολοκληρώθηκε. Τα δεδομένα του Backup φορτώθηκαν.';
+  await loadSeasons();await loadProfile();await dash();
+ }catch(e){if(m)m.textContent='❌ Η επαναφορά σταμάτησε: '+e.message+' — ΜΗΝ κάνεις νέα διαγραφή. Κράτησε το αρχείο Backup και στείλε μου αυτό το μήνυμα.'}
 }
 async function deleteAllGeoFyloData(){
  const m=document.getElementById('dataManageMsg');
