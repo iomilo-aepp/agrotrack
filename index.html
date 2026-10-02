@@ -17,7 +17,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.3.4 • Smart Home + PIN</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.4 • Smart Home + PIN</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
@@ -112,7 +112,9 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <div class="m">Έξοδα<b id="rExpense">0 €</b></div>
 <div class="m">Καθαρό αποτέλεσμα<b id="rProfit">0 €</b></div>
 <div class="m">Περιθώριο<b id="rMargin">—</b></div>
+<div class="m">Κέρδος / στρέμμα<b id="rProfitArea">—</b></div>
 </div>
+<h4>🌱 Σύγκριση κερδοφορίας περιόδου</h4><small>Σύγκριση όλων των αγροτεμαχίων / θερμοκηπίων της επιλεγμένης καλλιεργητικής περιόδου.</small><div id="profitabilityComparison"><small>Φόρτωση...</small></div>
 <h4>Διαλογή πωλήσεων</h4><div id="gradeBreakdown"><small>Δεν υπάρχουν πωλήσεις.</small></div><h4>👥 Πωλήσεις ανά πελάτη / έμπορο</h4><div id="customerBreakdown"><small>Δεν υπάρχουν πωλήσεις.</small></div><h4>💳 Υπόλοιπα πελατών (συνολικά)</h4><div id="paymentBreakdown"><small>Δεν υπάρχουν στοιχεία.</small></div><h4>📦 Κατανάλωση & Κόστος Εφοδίων</h4><div id="inventoryUsageSummary"><small>Δεν υπάρχουν καταναλώσεις εφοδίων.</small></div><h4>Έξοδα ανά κατηγορία</h4><div id="expenseBreakdown"><small>Δεν υπάρχουν έξοδα.</small></div>
 <h4>Ανά μήνα</h4><div id="monthlyReport"><small>Δεν υπάρχουν δεδομένα.</small></div>
 </div>
@@ -843,7 +845,7 @@ if(document.getElementById('dIncome')){
   (cr.data||[]).forEach(cu=>{const charges=(asr.data||[]).filter(x=>(x.buyer||'').trim()===cu.name.trim()).map(x=>({id:x.id,date:x.sale_date,amount:Number(x.kg||0)*Number(x.price_per_kg||0)}));const pays=(pr.data||[]).filter(x=>Number(x.customer_id)===Number(cu.id));const open=fifoOpenCharges(charges,pays).filter(x=>x.remaining>0.00001);if(open.length){const sum=open.reduce((a,x)=>a+x.remaining,0),oldest=open[0],od=open.filter(x=>ageDays(x.date)>=overdueDaysValue),odSum=od.reduce((a,x)=>a+x.remaining,0);unpaidCustomers.push({id:cu.id,name:cu.name,sum,days:ageDays(oldest.date),overdue:odSum>0,overdueSum:odSum})}});
   const unpaidSuppliers=[];
   (supr.data||[]).forEach(su=>{const charges=(pir.data||[]).filter(h=>(h.supplier||'').trim()===su.name.trim()).map(h=>({id:h.id,date:h.invoice_date,amount:(itemsByInvoice[h.id]||[]).reduce((a,x)=>a+Number(x.quantity||0)*Number(x.unit_cost||0),0)}));const pays=(spp.data||[]).filter(x=>(x.supplier||'').trim()===su.name.trim());const open=fifoOpenCharges(charges,pays).filter(x=>x.remaining>0.00001);if(open.length){const sum=open.reduce((a,x)=>a+x.remaining,0),oldest=open[0],od=open.filter(x=>ageDays(x.date)>=overdueDaysValue),odSum=od.reduce((a,x)=>a+x.remaining,0);unpaidSuppliers.push({id:su.id,name:su.name,sum,days:ageDays(oldest.date),overdue:odSum>0,overdueSum:odSum})}});
-  // v4.3.4: Η Έξυπνη Αρχική χρησιμοποιεί ακριβώς τα ίδια FIFO ληξιπρόθεσμα με τις καρτέλες/ειδοποιήσεις.
+  // v4.4: Η Έξυπνη Αρχική χρησιμοποιεί ακριβώς τα ίδια FIFO ληξιπρόθεσμα με τις καρτέλες/ειδοποιήσεις.
   overdueCustomerTotal=unpaidCustomers.reduce((sum,x)=>sum+Number(x.overdueSum||0),0);
   overdueSupplierTotal=unpaidSuppliers.reduce((sum,x)=>sum+Number(x.overdueSum||0),0);
   if(document.getElementById('smartCustomerOverdue'))smartCustomerOverdue.textContent=euro(overdueCustomerTotal);
@@ -868,12 +870,29 @@ await loadReports();
 }
 
 
+async function loadProfitabilityComparison(){
+ const box=document.getElementById('profitabilityComparison');if(!box)return;
+ if(!season.value){box.innerHTML='<small>Επίλεξε καλλιεργητική περίοδο.</small>';return;}
+ const gr=await sb.from('greenhouses').select('*').eq('season_id',season.value);
+ if(gr.error){box.innerHTML='<small>Δεν ήταν δυνατή η φόρτωση.</small>';return;}
+ const gs=gr.data||[];if(!gs.length){box.innerHTML='<small>Δεν υπάρχουν αγροτεμάχια στην περίοδο.</small>';return;}
+ const ids=gs.map(x=>x.id);
+ const [er,hr,sr]=await Promise.all([
+  sb.from('expenses').select('greenhouse_id,amount').in('greenhouse_id',ids),
+  sb.from('harvests').select('greenhouse_id,kg').in('greenhouse_id',ids),
+  sb.from('sales').select('greenhouse_id,kg,price_per_kg').in('greenhouse_id',ids)
+ ]);
+ if(er.error||hr.error||sr.error){box.innerHTML='<small>Δεν ήταν δυνατή η σύγκριση.</small>';return;}
+ const rows=gs.map(g=>{const expenses=(er.data||[]).filter(x=>x.greenhouse_id==g.id).reduce((z,x)=>z+Number(x.amount||0),0);const production=(hr.data||[]).filter(x=>x.greenhouse_id==g.id).reduce((z,x)=>z+Number(x.kg||0),0);const income=(sr.data||[]).filter(x=>x.greenhouse_id==g.id).reduce((z,x)=>z+Number(x.kg||0)*Number(x.price_per_kg||0),0);const profit=income-expenses,area=Number(g.area||0);return {g,expenses,production,income,profit,ppa:area?profit/area:null,costkg:production?expenses/production:null};}).sort((a,b)=>b.profit-a.profit);
+ box.innerHTML=rows.map(r=>`<div class="entry"><div class="entryText"><b>${esc(r.g.name)} • ${esc(r.g.crop)}</b><br><small>Παραγωγή ${r.production.toLocaleString('el-GR')} kg • Έσοδα ${euro(r.income)} • Έξοδα ${euro(r.expenses)}<br>Κόστος/kg ${r.costkg===null?'—':euro(r.costkg)} • Κέρδος/στρ. ${r.ppa===null?'—':euro(r.ppa)}</small></div><div style="text-align:right"><b>${euro(r.profit)}</b><br><small>αποτέλεσμα</small></div></div>`).join('');
+}
+
 async function loadReports(){
  if(!document.getElementById('rProduction'))return;
  if(!gh.value){
   if(document.getElementById('homeSelection')){homeSelection.textContent='Επίλεξε περίοδο και αγροτεμάχιο';homeNumbers.innerHTML='<small>Τα βασικά στοιχεία θα εμφανιστούν εδώ.</small>';}
-  rProduction.textContent='0 kg';rYield.textContent=rAvgPrice.textContent=rCostKg.textContent=rMargin.textContent='—';
-  rIncome.textContent=rExpense.textContent=rProfit.textContent='0 €';expenseBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';if(document.getElementById('gradeBreakdown'))gradeBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';if(document.getElementById('customerBreakdown'))customerBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';await renderPaymentBreakdown();monthlyReport.innerHTML='';return;
+  rProduction.textContent='0 kg';rYield.textContent=rAvgPrice.textContent=rCostKg.textContent=rMargin.textContent='—';if(document.getElementById('rProfitArea'))rProfitArea.textContent='—';
+  rIncome.textContent=rExpense.textContent=rProfit.textContent='0 €';if(document.getElementById('profitabilityComparison'))profitabilityComparison.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';expenseBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';if(document.getElementById('gradeBreakdown'))gradeBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';if(document.getElementById('customerBreakdown'))customerBreakdown.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';await renderPaymentBreakdown();monthlyReport.innerHTML='';return;
  }
  const gid=gh.value;
  const [g,a,b,c]=await Promise.all([
@@ -905,6 +924,8 @@ async function loadReports(){
  rCostKg.textContent=production?euro(expense/production):'—';
  rIncome.textContent=euro(income);rExpense.textContent=euro(expense);rProfit.textContent=euro(profit);
  rMargin.textContent=income?(profit/income*100).toLocaleString('el-GR',{maximumFractionDigits:1})+'%':'—';
+ if(document.getElementById('rProfitArea'))rProfitArea.textContent=area?euro(profit/area):'—';
+ await loadProfitabilityComparison();
  await renderPaymentBreakdown();
 
  const grades={A:{kg:0,income:0},B:{kg:0,income:0},SKARTA:{kg:0,income:0}};c.data.forEach(x=>{if(grades[x.grade]){grades[x.grade].kg+=Number(x.kg||0);grades[x.grade].income+=Number(x.kg||0)*Number(x.price_per_kg||0)}});if(document.getElementById('gradeBreakdown'))gradeBreakdown.innerHTML=['A','B','SKARTA'].map(gr=>{const v=grades[gr],label=gr==='SKARTA'?'Σκάρτα':gr,avg=v.kg?v.income/v.kg:0;return `<div class="entry"><div class="entryText"><b>${label}</b><br><small>${v.kg.toLocaleString('el-GR')} kg</small></div><div style="text-align:right"><b>${euro(v.income)}</b><br><small>Μ.Ο. ${v.kg?euro(avg)+'/kg':'—'}</small></div></div>`}).join('');
