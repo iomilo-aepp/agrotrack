@@ -1001,8 +1001,10 @@ async function loadBudgetValues(){
   if(!pT){forecast.innerHTML='<small>Όρισε στόχο παραγωγής για να εμφανιστεί πρόβλεψη.</small>';return;}
   const soldKg=(sr.data||[]).reduce((z,x)=>z+Number(x.kg||0),0),avgPrice=soldKg?income/soldKg:0;
   const projectedByTarget=avgPrice?pT*avgPrice:0;
-  // Η πρόβλεψη τελικών εσόδων δεν μπορεί να είναι μικρότερη από τα ήδη πραγματοποιημένα έσοδα.
-  const estimatedIncome=Math.max(income,projectedByTarget,iT||0);
+  // Ο στόχος εσόδων είναι μόνο στόχος και δεν συμμετέχει στην πρόβλεψη.
+  // Η πρόβλεψη βασίζεται στη μέση πραγματική τιμή πώλησης και στον στόχο παραγωγής,
+  // αλλά δεν επιτρέπεται να πέσει κάτω από τα ήδη πραγματοποιημένα έσοδα.
+  const estimatedIncome=Math.max(income,projectedByTarget);
   const estimatedProfit=estimatedIncome-expense;
   const prodProgress=pct(production,pT),expenseProgress=pct(expense,eT);
   let status='🟢 Εντός στόχου';
