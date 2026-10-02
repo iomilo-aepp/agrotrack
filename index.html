@@ -649,6 +649,8 @@ async function loadMySubscription(){
 }
 async function loadProfile(){
  updatePinSettingsUI();
+ // Commercial v1.3.1: refresh the signed-in user's subscription whenever Profile opens.
+ await loadMySubscription();
  const m=document.getElementById('profileMsg');if(m)m.textContent='';
  const r=await sb.from('profiles').select('full_name,phone,farm_name,area').eq('id',user.id).maybeSingle();
  if(r.error){if(m)m.textContent='Δεν φορτώθηκε το προφίλ: '+r.error.message;return}
