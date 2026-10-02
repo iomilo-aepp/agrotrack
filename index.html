@@ -470,12 +470,19 @@ async function useEmailLogin(){const r=await sb.auth.getSession();if(r.data.sess
 async function unlockWithPin(){if(!user)return;msg.textContent='';const lock=Number(localStorage.getItem(pinLockKey(user))||0);if(lock>Date.now()){msg.textContent='🔒 Πολλές αποτυχημένες προσπάθειες. Δοκίμασε ξανά σε '+Math.ceil((lock-Date.now())/1000)+' δευτ.';return}const p=pinInput.value;if(!/^\d{4}$/.test(p)){msg.textContent='Γράψε τον 4ψήφιο PIN.';return}const ok=(await pinHash(p,user))===localStorage.getItem(pinKey(user));if(!ok){let n=Number(localStorage.getItem(pinFailKey(user))||0)+1;if(n>=5){localStorage.setItem(pinLockKey(user),String(Date.now()+30000));localStorage.setItem(pinFailKey(user),'0');msg.textContent='🔒 5 λάθος προσπάθειες. Κλείδωμα για 30 δευτερόλεπτα.'}else{localStorage.setItem(pinFailKey(user),String(n));msg.textContent='❌ Λάθος PIN. Απομένουν '+(5-n)+' προσπάθειες.'}pinInput.value='';return}localStorage.removeItem(pinFailKey(user));localStorage.removeItem(pinLockKey(user));sessionStorage.setItem(pinSessionKey(user),'1');await enter(user)}
 async function submitAuth(){msg.textContent='';let r=signup?await sb.auth.signUp({email:email.value,password:pass.value,options:{data:{full_name:name.value},emailRedirectTo:'https://iomilo-aepp.github.io/agrotrack/'}}):await sb.auth.signInWithPassword({email:email.value,password:pass.value});if(r.error)return msg.textContent=r.error.message;if(r.data.session){if(!localStorage.getItem(pinKey(r.data.user)))await setupPin(r.data.user);sessionStorage.setItem(pinSessionKey(r.data.user),'1');await enter(r.data.user)}else msg.textContent='Έλεγξε το email σου για επιβεβαίωση και μετά κάνε σύνδεση.'}
 async function ensureSubscription(u){
- const q=await sb.from('subscriptions').select('*').eq('user_id',u.id).maybeSingle();
+ if(!u?.id)throw new Error('Δεν βρέθηκε ενεργός χρήστης για τον έλεγχο συνδρομής.');
+ // 1) Read the user's subscription first.
+ let q=await sb.from('subscriptions').select('*').eq('user_id',u.id).maybeSingle();
  if(q.error)throw new Error('Σφάλμα ελέγχου συνδρομής: '+q.error.message);
  if(q.data)return q.data;
- const ins=await sb.from('subscriptions').insert({user_id:u.id,plan:'trial',status:'trial'}).select('*').single();
+ // 2) No row: create the 30-day trial. Do not rely on RETURNING, then verify explicitly.
+ const ins=await sb.from('subscriptions').insert({user_id:u.id,plan:'trial',status:'trial'});
  if(ins.error)throw new Error('Δεν ήταν δυνατή η δημιουργία της δωρεάν δοκιμής: '+ins.error.message);
- return ins.data;
+ // 3) Verify that the row really exists before allowing access.
+ q=await sb.from('subscriptions').select('*').eq('user_id',u.id).maybeSingle();
+ if(q.error)throw new Error('Η δοκιμή δημιουργήθηκε αλλά απέτυχε η επιβεβαίωσή της: '+q.error.message);
+ if(!q.data)throw new Error('Η εγγραφή συνδρομής δεν δημιουργήθηκε. Η πρόσβαση σταμάτησε για ασφάλεια.');
+ return q.data;
 }
 function subscriptionAccess(s){
  const now=Date.now();
