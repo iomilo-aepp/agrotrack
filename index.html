@@ -1,5 +1,6 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GeoFylo v4.2.3</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>GeoFylo v4.2.3</title><div id="completionModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;padding:18px;overflow:auto"><div class="card" style="max-width:520px;margin:8vh auto;background:#fff"><h3>✅ Ολοκλήρωση εργασίας</h3><small>Δήλωσε το εφόδιο και την πραγματική ποσότητα που χρησιμοποιήθηκε. Αν δεν χρησιμοποιήθηκε εφόδιο, επίλεξε «Χωρίς εφόδιο».</small><label style="margin-top:14px">📦 Εφόδιο<select id="completionInventory" onchange="completionInventoryChanged()"><option value="">— Χωρίς εφόδιο —</option></select></label><div id="completionAvailable"><small>Επίλεξε εφόδιο για να δεις το διαθέσιμο απόθεμα.</small></div><label>Ποσότητα που χρησιμοποιήθηκε<input id="completionQty" type="number" step="0.01" min="0" placeholder="0"></label><div class="grid"><button class="soft" onclick="closeCompletionModal()">Ακύρωση</button><button id="confirmCompletionBtn" onclick="confirmActivityCompletion()">✅ Ολοκλήρωση εργασίας</button></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -1114,10 +1115,46 @@ async function loadReports(){
 
 async function photoUrl(path){if(!path)return '';const r=await sb.storage.from('activity-photos').createSignedUrl(path,3600);return r.error?'':r.data.signedUrl}
 async function showCalendarPhotos(){for(const el of document.querySelectorAll('[data-photo]')){const u=await photoUrl(el.dataset.photo);if(u)el.innerHTML=`<img src="${u}" alt="Φωτογραφία εργασίας" style="max-width:260px;width:100%;border-radius:10px;margin-top:8px">`;}}
+let completionActivity=null,completionInventory=[];
 async function completeActivity(id){
- const {error}=await sb.from('activities').update({status:'completed',scheduled:false}).eq('id',id);
- if(error){alert(error.message);return}
- await Promise.all([dash(),loadCalendar()]);
+ const ar=await sb.from('activities').select('*').eq('id',id).single();
+ if(ar.error)return alert(ar.error.message);
+ const ir=await sb.from('inventory').select('*').order('name');
+ if(ir.error)return alert(ir.error.message);
+ completionActivity=ar.data;completionInventory=ir.data||[];
+ const sel=document.getElementById('completionInventory');
+ sel.innerHTML='<option value="">— Χωρίς εφόδιο —</option>'+completionInventory.map(x=>`<option value="${x.id}">${esc(x.name)} — ${Number(x.quantity||0).toLocaleString('el-GR')} ${esc(x.unit||'')}</option>`).join('');
+ document.getElementById('completionQty').value='';
+ document.getElementById('completionAvailable').innerHTML='<small>Επίλεξε εφόδιο για να δεις το διαθέσιμο απόθεμα.</small>';
+ document.getElementById('completionModal').classList.remove('hidden');
+}
+function completionInventoryChanged(){
+ const id=Number(document.getElementById('completionInventory').value||0),it=completionInventory.find(x=>Number(x.id)===id);
+ document.getElementById('completionAvailable').innerHTML=it?`<small>Διαθέσιμο: <b>${Number(it.quantity||0).toLocaleString('el-GR')} ${esc(it.unit||'')}</b></small>`:'<small>Η εργασία θα ολοκληρωθεί χωρίς κατανάλωση εφοδίου.</small>';
+}
+function closeCompletionModal(){document.getElementById('completionModal').classList.add('hidden');completionActivity=null;completionInventory=[];}
+async function confirmActivityCompletion(){
+ if(!completionActivity)return;
+ const btn=document.getElementById('confirmCompletionBtn'),invId=Number(document.getElementById('completionInventory').value||0),qty=Number(document.getElementById('completionQty').value||0);
+ const it=completionInventory.find(x=>Number(x.id)===invId);
+ if(invId && (!Number.isFinite(qty)||qty<=0))return alert('Γράψε την ποσότητα εφοδίου που χρησιμοποιήθηκε.');
+ if(it && qty>Number(it.quantity||0))return alert(`Δεν υπάρχει αρκετό απόθεμα. Διαθέσιμο: ${Number(it.quantity||0).toLocaleString('el-GR')} ${it.unit||''}`);
+ btn.disabled=true;btn.textContent='⏳ Αποθήκευση...';
+ try{
+  if(it){
+   const ur=await sb.from('inventory_usage').insert({user_id:user.id,inventory_id:it.id,greenhouse_id:completionActivity.greenhouse_id,activity_id:completionActivity.id,usage_date:completionActivity.activity_date,quantity:qty,note:completionActivity.note||null});
+   if(ur.error)throw ur.error;
+   const nr=await sb.from('inventory').update({quantity:Number(it.quantity||0)-qty}).eq('id',it.id);
+   if(nr.error){await sb.from('inventory_usage').delete().eq('activity_id',completionActivity.id).eq('inventory_id',it.id);throw nr.error}
+  }
+  const cr=await sb.from('activities').update({status:'completed',scheduled:false}).eq('id',completionActivity.id);
+  if(cr.error){
+   if(it){await sb.from('inventory').update({quantity:Number(it.quantity||0)}).eq('id',it.id);await sb.from('inventory_usage').delete().eq('activity_id',completionActivity.id).eq('inventory_id',it.id)}
+   throw cr.error;
+  }
+  closeCompletionModal();await Promise.all([dash(),loadCalendar()]);
+ }catch(e){alert('Δεν ολοκληρώθηκε η εργασία: '+(e?.message||e))}
+ finally{btn.disabled=false;btn.textContent='✅ Ολοκλήρωση εργασίας'}
 }
 function taskLocalYmd(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function taskCard(x){
