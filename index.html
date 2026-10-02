@@ -214,6 +214,10 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <small id="profileMsg"></small>
 </div>
 <div class="card">
+<h3>💳 Η συνδρομή μου</h3>
+<div id="mySubscriptionBox"><small>Φόρτωση συνδρομής...</small></div>
+</div>
+<div class="card">
 <h3>⏰ Ληξιπρόθεσμες οφειλές</h3>
 <small>Μια ανεξόφλητη κίνηση θεωρείται ληξιπρόθεσμη μετά από:</small>
 <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input id="overdueDays" type="number" min="1" max="365" value="30" style="margin:0;max-width:100px"><span>ημέρες</span><button class="soft" style="width:auto;margin:0" onclick="saveOverdueDays()">Αποθήκευση</button></div>
@@ -627,6 +631,22 @@ async function deleteAllGeoFyloData(){
   setTimeout(()=>location.reload(),700);
  }catch(e){if(m)m.textContent='❌ Η διαγραφή σταμάτησε: '+e.message+' — όσα είχαν ήδη διαγραφεί δεν επανέρχονται αυτόματα.'}
 }
+function subscriptionDisplayDate(v){return v?new Date(v).toLocaleDateString('el-GR'):'—'}
+function subscriptionRemainingDays(s){
+ const a=subscriptionAccess(s);if(!a.ok||!a.end)return 0;
+ return Math.max(0,Math.ceil((a.end-Date.now())/86400000));
+}
+async function loadMySubscription(){
+ const box=document.getElementById('mySubscriptionBox');if(!box||!user)return;
+ box.innerHTML='<small>Φόρτωση συνδρομής...</small>';
+ const r=await sb.from('subscriptions').select('*').eq('user_id',user.id).maybeSingle();
+ if(r.error){box.innerHTML='<small>❌ '+esc(r.error.message)+'</small>';return}
+ const s=r.data;if(!s){box.innerHTML='<small>Δεν βρέθηκε συνδρομή.</small>';return}
+ const a=subscriptionAccess(s),days=subscriptionRemainingDays(s),end=a.end?new Date(a.end).toLocaleDateString('el-GR'):'—';
+ const label=a.paid?'GeoFylo Pro':(a.trial?'Δωρεάν δοκιμή':'Χωρίς ενεργή συνδρομή');
+ const status=a.ok?'🟢 Ενεργή':'🔴 Έληξε';
+ box.innerHTML=`<div class="entry"><div class="entryText"><b>${status}</b><br><small>Πακέτο: <b>${esc(label)}</b></small><br><small>Πρόσβαση έως: <b>${esc(end)}</b></small><br><small>Υπόλοιπο: <b>${days} ${days===1?'ημέρα':'ημέρες'}</b></small></div></div>`;
+}
 async function loadProfile(){
  updatePinSettingsUI();
  const m=document.getElementById('profileMsg');if(m)m.textContent='';
@@ -945,6 +965,9 @@ if(document.getElementById('dIncome')){
   (supr.data||[]).forEach(su=>{const charges=(pir.data||[]).filter(h=>(h.supplier||'').trim()===su.name.trim()).map(h=>({date:h.invoice_date,amount:(itemsByInvoice[h.id]||[]).reduce((a,x)=>a+Number(x.quantity||0)*Number(x.unit_cost||0),0)}));const r=overdueResidual(charges,supplierPaid[su.name]||0,overdueDaysValue);if(r.sum>0){overdueSupplierTotal+=r.sum;overdueSupplierCount++;overdueSuppliers.push({id:su.id,name:su.name,sum:r.sum,days:ageDays(r.oldest)})}});
   dBalances.textContent=euro(balances);if(document.getElementById('dSupplierDebt'))dSupplierDebt.textContent=euro(supplierDebt);if(document.getElementById('dDebtNet'))dDebtNet.textContent=euro(balances-supplierDebt);dInventoryValue.textContent=euro(invValue);dPending.textContent=pending.length.toLocaleString('el-GR');
   const low=(ir.data||[]).filter(x=>Number(x.quantity||0)<=5);const alerts=[];
+  // Commercial v1.3: ειδοποίηση λήξης συνδρομής 10 ημέρες πριν.
+  const subQ=await sb.from('subscriptions').select('*').eq('user_id',user.id).maybeSingle();
+  if(!subQ.error&&subQ.data){const sa=subscriptionAccess(subQ.data),sd=subscriptionRemainingDays(subQ.data);if(sa.ok&&sd<=10)alerts.push(`<div class="dashAlert" onclick="showPage('profile')">🟠 <b>Η συνδρομή σας λήγει σε ${sd} ${sd===1?'ημέρα':'ημέρες'}.</b><br><small>Πάτησε για να δεις τη συνδρομή σου</small></div>`);}
   const now=new Date();now.setHours(0,0,0,0);const tomorrow=new Date(now);tomorrow.setDate(tomorrow.getDate()+1);
   const ymd=z=>`${z.getFullYear()}-${String(z.getMonth()+1).padStart(2,'0')}-${String(z.getDate()).padStart(2,'0')}`;
   const todayTasks=pending.filter(x=>x.activity_date===ymd(now));
