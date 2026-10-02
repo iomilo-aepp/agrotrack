@@ -531,7 +531,7 @@ async function loadAdminSubscriptions(){
  const active=rows.filter(x=>adminStatusLabel(x).includes('Ενεργή')).length,total=payments.reduce((a,x)=>a+Number(x.amount||0),0);
  const stats=document.getElementById('adminStats');if(stats)stats.innerHTML=`<div class="grid"><div><small>Ενεργοί συνδρομητές</small><br><b>${active}</b></div><div><small>Καταγεγραμμένα έσοδα</small><br><b>${euro(total)}</b></div></div>`;
  if(!rows.length){box.innerHTML='<small>Δεν υπάρχουν συνδρομές.</small>';return}
- box.innerHTML=rows.map(x=>`<div class="card" style="margin:10px 0;padding:14px"><b>${esc(x.full_name||x.email||'Χρήστης')}</b><br><small>${esc(x.email||'')}</small><div style="margin-top:8px"><b>${adminStatusLabel(x)}</b> • Πακέτο: ${esc(x.plan||'—')}</div><small>Trial έως: ${adminDate(x.trial_ends_at)} • Συνδρομή έως: ${adminDate(x.subscription_ends_at)}</small><div class="quickGrid" style="margin-top:10px"><button onclick="openSubscriptionPayment('${x.user_id}',1,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+1 μήνα</button><button onclick="openSubscriptionPayment('${x.user_id}',3,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+3 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',6,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+6 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',12,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+12 μήνες</button></div></div>`).join('');
+ box.innerHTML=rows.map(x=>`<div class="card" style="margin:10px 0;padding:14px"><b>${esc(x.full_name||x.email||'Χρήστης')}</b><br><small>${esc(x.email||'')}</small><div style="margin-top:8px"><b>${adminStatusLabel(x)}</b> • Πακέτο: ${esc(x.plan||'—')}</div><small>Trial έως: ${adminDate(x.trial_ends_at)} • Συνδρομή έως: ${adminDate(x.subscription_ends_at)}</small><div class="quickGrid" style="margin-top:10px"><button onclick="openSubscriptionPayment('${x.user_id}',1,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+1 μήνα</button><button onclick="openSubscriptionPayment('${x.user_id}',3,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+3 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',6,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+6 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',12,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+12 μήνες</button><button class="soft" onclick="adminEditSubscription('${x.user_id}','${esc(x.plan||'trial')}','${esc(x.status||'trial')}','${x.subscription_ends_at||''}')">✏️ Επεξεργασία</button><button class="danger" onclick="adminDeleteSubscription('${x.user_id}','${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">🗑️ Διαγραφή</button></div></div>`).join('');
  renderAdminPaymentHistory(payments,rows);
 }
 function openSubscriptionPayment(uid,months,name){
@@ -553,7 +553,30 @@ function renderAdminPaymentHistory(payments,rows){
  const box=document.getElementById('adminPaymentHistory');if(!box)return;
  if(!payments.length){box.innerHTML='<small>Δεν υπάρχουν καταγεγραμμένες πληρωμές.</small>';return}
  const names=Object.fromEntries(rows.map(x=>[x.user_id,x.full_name||x.email||'Χρήστης']));
- box.innerHTML=payments.slice(0,100).map(p=>`<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(names[p.user_id]||'Χρήστης')}</b> • <b>${euro(p.amount)}</b><br><small>${adminDate(p.payment_date)} • ${p.months} μήνες${p.payment_method?' • '+esc(p.payment_method):''}${p.note?' • '+esc(p.note):''}</small></div>`).join('');
+ box.innerHTML=payments.slice(0,100).map(p=>`<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(names[p.user_id]||'Χρήστης')}</b> • <b>${euro(p.amount)}</b><br><small>${adminDate(p.payment_date)} • ${p.months} μήνες${p.payment_method?' • '+esc(p.payment_method):''}${p.note?' • '+esc(p.note):''}</small><div class="quickGrid" style="margin-top:8px"><button class="soft" onclick="adminEditPayment(${p.id},${Number(p.amount||0)},'${p.payment_date||''}','${esc((p.payment_method||'').replace(/'/g,'&#39;'))}','${esc((p.note||'').replace(/'/g,'&#39;'))}')">✏️ Επεξεργασία</button><button class="danger" onclick="adminDeletePayment(${p.id})">🗑️ Διαγραφή</button></div></div>`).join('');
+}
+async function adminEditSubscription(uid,plan,status,end){
+ const np=prompt('Πακέτο (trial ή pro):',plan);if(np===null)return;
+ const ns=prompt('Κατάσταση (trial, active, expired, disabled):',status);if(ns===null)return;
+ const current=end?new Date(end).toISOString().slice(0,10):'';
+ const nd=prompt('Ημερομηνία λήξης συνδρομής (YYYY-MM-DD) ή κενό:',current);if(nd===null)return;
+ const iso=nd.trim()?nd.trim()+'T23:59:59':null;
+ const r=await sb.rpc('admin_update_subscription',{target_user_id:uid,new_plan:np.trim(),new_status:ns.trim(),new_end:iso});
+ if(r.error){alert('❌ '+r.error.message);return} await loadAdminSubscriptions();
+}
+async function adminDeleteSubscription(uid,name){
+ if(!confirm(`Διαγραφή της συνδρομής του ${name};\n\nΔεν διαγράφεται ο λογαριασμός ή τα δεδομένα παραγωγής.`))return;
+ const r=await sb.rpc('admin_delete_subscription',{target_user_id:uid});if(r.error){alert('❌ '+r.error.message);return} await loadAdminSubscriptions();
+}
+async function adminEditPayment(id,amount,date,method,note){
+ const a=prompt('Ποσό (€):',String(amount));if(a===null)return;const n=Number(String(a).replace(',','.'));if(!Number.isFinite(n)||n<0){alert('Μη έγκυρο ποσό.');return}
+ const d=prompt('Ημερομηνία (YYYY-MM-DD):',date||'');if(d===null||!d.trim())return;
+ const m=prompt('Τρόπος πληρωμής:',method||'');if(m===null)return;const no=prompt('Σημείωση:',note||'');if(no===null)return;
+ const r=await sb.rpc('admin_update_subscription_payment',{payment_id:id,new_amount:n,new_payment_date:d.trim(),new_payment_method:m||null,new_note:no||null});if(r.error){alert('❌ '+r.error.message);return} await loadAdminSubscriptions();
+}
+async function adminDeletePayment(id){
+ if(!confirm('Διαγραφή αυτής της πληρωμής από το ιστορικό;'))return;
+ const r=await sb.rpc('admin_delete_subscription_payment',{payment_id:id});if(r.error){alert('❌ '+r.error.message);return} await loadAdminSubscriptions();
 }
 async function enter(u){
  user=u;
