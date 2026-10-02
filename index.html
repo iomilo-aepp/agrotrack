@@ -17,7 +17,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.4 • Smart Home + PIN</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.4.1 • Smart Home + PIN</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
@@ -64,18 +64,17 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <div class="dashBox"><small>📦 Αξία αποθήκης</small><b id="dInventoryValue">0,00 €</b></div>
 <div class="dashBox"><small>⏳ Εκκρεμείς εργασίες</small><b id="dPending">0</b></div>
 </div>
-<div style="margin-top:12px;padding:10px;border:1px solid #ddd;border-radius:12px"><b>⏰ Ληξιπρόθεσμες οφειλές</b><br><small>Μια ανεξόφλητη κίνηση θεωρείται ληξιπρόθεσμη μετά από:</small><div style="display:flex;gap:8px;align-items:center;margin-top:6px"><input id="overdueDays" type="number" min="1" max="365" value="30" style="margin:0;max-width:100px"><span>ημέρες</span><button class="soft" style="width:auto;margin:0" onclick="saveOverdueDays()">Αποθήκευση</button></div><small id="overdueSaveStatus" style="display:block;margin-top:6px"></small></div>
 <h4>🔔 Ειδοποιήσεις</h4><div id="dashboardAlerts"><small>Φόρτωση...</small></div></div>
 <div class="card"><div class="metrics"><div class="m">Παραγωγή<b id="kg">0 kg</b></div><div class="m">Πωληθέντα<b id="sold">0 kg</b></div><div class="m">Έσοδα<b id="inc">0 €</b></div><div class="m">Έξοδα<b id="exp">0 €</b></div><div class="m">Αποτέλεσμα<b id="profit">0 €</b></div><div class="m">Κόστος/kg<b id="costkg">—</b></div></div><h4>Διαλογή πωλήσεων</h4><div class="metrics"><div class="m">🅰️ Α<b id="soldA">0 kg</b></div><div class="m">🅱️ Β<b id="soldB">0 kg</b></div><div class="m">📦 Σκάρτα<b id="soldSkarta">0 kg</b></div></div></div>
-</div><div id="page-entry" class="page"><div class="card"><h3>Καλλιεργητική περίοδος</h3><select id="season" onchange="loadGH()"></select><input id="newSeason" placeholder="π.χ. 2026–27"><button onclick="addSeason()">+ Περίοδος</button>
-<div class="grid"><button class="soft" onclick="renameSeason()">✏️ Μετονομασία περιόδου</button><button class="danger" onclick="deleteSeason()">🗑️ Διαγραφή περιόδου</button></div></div>
-<div class="card"><h3>Αγροτεμάχιο / Θερμοκήπιο</h3><select id="gh" onchange="dash()"></select><input id="ghName" placeholder="Όνομα"><div class="grid"><input id="area" type="number" step=".1" placeholder="Στρέμματα"><select id="crop"><option>Αγγούρι</option><option>Ντομάτα</option><option>Πιπεριά</option><option>Μελιτζάνα</option><option>Κολοκύθι</option><option>Καρπούζι</option><option>Πεπόνι</option><option>Ελιά</option><option>Αμπέλι</option><option>Πατάτα</option><option>Αβοκάντο</option></select></div><button onclick="addGH()">+ Αγροτεμάχιο</button>
-<div class="grid"><button class="soft" onclick="editGH()">✏️ Επεξεργασία</button><button class="danger" onclick="deleteGH()">🗑️ Διαγραφή</button></div></div>
-<div class="card" id="entryCard"><h3 id="tNewEntry">Νέα καταχώρηση</h3>
+</div><div id="page-entry" class="page"><div class="card" id="entryCard"><h3 id="tNewEntry">Νέα καταχώρηση</h3>
 <button class="voice" id="voiceBtn" onclick="startVoice()">🎙️ Φωνητική καταχώρηση</button>
 <small id="voiceMsg"></small>
 <select id="etype" onchange="entryFields()"><option value="expense">Έξοδο</option><option value="harvest">Συγκομιδή</option><option value="sale">Πώληση</option><option value="activity">📅 Εργασία / Ημερολόγιο</option></select>
 <div id="fields"></div><input id="note" placeholder="Σημείωση"><button id="saveEntryBtn" onclick="addEntry()">Αποθήκευση</button></div>
+<div class="card"><h3>Καλλιεργητική περίοδος</h3><select id="season" onchange="loadGH()"></select><input id="newSeason" placeholder="π.χ. 2026–27"><button onclick="addSeason()">+ Περίοδος</button>
+<div class="grid"><button class="soft" onclick="renameSeason()">✏️ Μετονομασία περιόδου</button><button class="danger" onclick="deleteSeason()">🗑️ Διαγραφή περιόδου</button></div></div>
+<div class="card"><h3>Αγροτεμάχιο / Θερμοκήπιο</h3><select id="gh" onchange="dash()"></select><input id="ghName" placeholder="Όνομα"><div class="grid"><input id="area" type="number" step=".1" placeholder="Στρέμματα"><select id="crop"><option>Αγγούρι</option><option>Ντομάτα</option><option>Πιπεριά</option><option>Μελιτζάνα</option><option>Κολοκύθι</option><option>Καρπούζι</option><option>Πεπόνι</option><option>Ελιά</option><option>Αμπέλι</option><option>Πατάτα</option><option>Αβοκάντο</option></select></div><button onclick="addGH()">+ Αγροτεμάχιο</button>
+<div class="grid"><button class="soft" onclick="editGH()">✏️ Επεξεργασία</button><button class="danger" onclick="deleteGH()">🗑️ Διαγραφή</button></div></div>
 </div><div id="page-movements" class="page"><div class="card" id="movementsCard">
 <h3>🧾 Κινήσεις</h3>
 <small>Βρες γρήγορα οποιαδήποτε καταχώρηση και διόρθωσέ την.</small>
@@ -171,6 +170,12 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <label>📍 Περιοχή<input id="profileArea" placeholder="π.χ. Τυμπάκι, Ηράκλειο"></label>
 <button id="saveProfileBtn" onclick="saveProfile()">💾 Αποθήκευση</button>
 <small id="profileMsg"></small>
+</div>
+<div class="card">
+<h3>⏰ Ληξιπρόθεσμες οφειλές</h3>
+<small>Μια ανεξόφλητη κίνηση θεωρείται ληξιπρόθεσμη μετά από:</small>
+<div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input id="overdueDays" type="number" min="1" max="365" value="30" style="margin:0;max-width:100px"><span>ημέρες</span><button class="soft" style="width:auto;margin:0" onclick="saveOverdueDays()">Αποθήκευση</button></div>
+<small id="overdueSaveStatus" style="display:block;margin-top:6px"></small>
 </div>
 <div class="card">
 <h3>🔐 Γρήγορη είσοδος με PIN</h3>
