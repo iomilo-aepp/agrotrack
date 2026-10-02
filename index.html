@@ -529,7 +529,7 @@ async function loadAdminSubscriptions(){
  if(pay.error){if(msg)msg.textContent='❌ Πληρωμές: '+pay.error.message}
  const rows=r.data||[],payments=pay.data||[];
  const active=rows.filter(x=>adminStatusLabel(x).includes('Ενεργή')).length,total=payments.reduce((a,x)=>a+Number(x.amount||0),0);
- const stats=document.getElementById('adminStats');if(stats)stats.innerHTML=`<div class="grid"><div><small>Ενεργοί συνδρομητές</small><br><b>${active}</b></div><div><small>Καταγεγραμμένα έσοδα</small><br><b>${eur(total)}</b></div></div>`;
+ const stats=document.getElementById('adminStats');if(stats)stats.innerHTML=`<div class="grid"><div><small>Ενεργοί συνδρομητές</small><br><b>${active}</b></div><div><small>Καταγεγραμμένα έσοδα</small><br><b>${euro(total)}</b></div></div>`;
  if(!rows.length){box.innerHTML='<small>Δεν υπάρχουν συνδρομές.</small>';return}
  box.innerHTML=rows.map(x=>`<div class="card" style="margin:10px 0;padding:14px"><b>${esc(x.full_name||x.email||'Χρήστης')}</b><br><small>${esc(x.email||'')}</small><div style="margin-top:8px"><b>${adminStatusLabel(x)}</b> • Πακέτο: ${esc(x.plan||'—')}</div><small>Trial έως: ${adminDate(x.trial_ends_at)} • Συνδρομή έως: ${adminDate(x.subscription_ends_at)}</small><div class="quickGrid" style="margin-top:10px"><button onclick="openSubscriptionPayment('${x.user_id}',1,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+1 μήνα</button><button onclick="openSubscriptionPayment('${x.user_id}',3,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+3 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',6,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+6 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',12,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+12 μήνες</button></div></div>`).join('');
  renderAdminPaymentHistory(payments,rows);
@@ -553,7 +553,7 @@ function renderAdminPaymentHistory(payments,rows){
  const box=document.getElementById('adminPaymentHistory');if(!box)return;
  if(!payments.length){box.innerHTML='<small>Δεν υπάρχουν καταγεγραμμένες πληρωμές.</small>';return}
  const names=Object.fromEntries(rows.map(x=>[x.user_id,x.full_name||x.email||'Χρήστης']));
- box.innerHTML=payments.slice(0,100).map(p=>`<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(names[p.user_id]||'Χρήστης')}</b> • <b>${eur(p.amount)}</b><br><small>${adminDate(p.payment_date)} • ${p.months} μήνες${p.payment_method?' • '+esc(p.payment_method):''}${p.note?' • '+esc(p.note):''}</small></div>`).join('');
+ box.innerHTML=payments.slice(0,100).map(p=>`<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(names[p.user_id]||'Χρήστης')}</b> • <b>${euro(p.amount)}</b><br><small>${adminDate(p.payment_date)} • ${p.months} μήνες${p.payment_method?' • '+esc(p.payment_method):''}${p.note?' • '+esc(p.note):''}</small></div>`).join('');
 }
 async function enter(u){
  user=u;
