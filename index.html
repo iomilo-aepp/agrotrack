@@ -1,6 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GeoFylo v4.2.3</title><div id="completionModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;padding:18px;overflow:auto"><div class="card" style="max-width:520px;margin:8vh auto;background:#fff"><h3>✅ Ολοκλήρωση εργασίας</h3><small>Δήλωσε το εφόδιο και την πραγματική ποσότητα που χρησιμοποιήθηκε. Αν δεν χρησιμοποιήθηκε εφόδιο, επίλεξε «Χωρίς εφόδιο».</small><label style="margin-top:14px">📦 Εφόδιο<select id="completionInventory" onchange="completionInventoryChanged()"><option value="">— Χωρίς εφόδιο —</option></select></label><div id="completionAvailable"><small>Επίλεξε εφόδιο για να δεις το διαθέσιμο απόθεμα.</small></div><label>Ποσότητα που χρησιμοποιήθηκε<input id="completionQty" type="number" step="0.01" min="0" placeholder="0"></label><div class="grid"><button class="soft" onclick="closeCompletionModal()">Ακύρωση</button><button id="confirmCompletionBtn" onclick="confirmActivityCompletion()">✅ Ολοκλήρωση εργασίας</button></div></div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>GeoFylo v4.9.2</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -17,7 +16,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <meta name="apple-mobile-web-app-title" content="GeoFylo">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
-</head><body><div class="app">
+</head><body><div id="completionModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;padding:18px;overflow:auto"><div class="card" style="max-width:520px;margin:8vh auto;background:#fff"><h3>✅ Ολοκλήρωση εργασίας</h3><small>Δήλωσε το εφόδιο και την πραγματική ποσότητα που χρησιμοποιήθηκε. Αν δεν χρησιμοποιήθηκε εφόδιο, επίλεξε «Χωρίς εφόδιο».</small><label style="margin-top:14px">📦 Εφόδιο<select id="completionInventory" onchange="completionInventoryChanged()"><option value="">— Χωρίς εφόδιο —</option></select></label><div id="completionAvailable"><small>Επίλεξε εφόδιο για να δεις το διαθέσιμο απόθεμα.</small></div><label>Ποσότητα που χρησιμοποιήθηκε<input id="completionQty" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="π.χ. 2,5" disabled></label><div class="grid"><button class="soft" onclick="closeCompletionModal()">Ακύρωση</button><button id="confirmCompletionBtn" onclick="confirmActivityCompletion()">✅ Ολοκλήρωση εργασίας</button></div></div></div><div class="app">
 <div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.9 • Κέντρο Εργασιών & Υπενθυμίσεων + PIN</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
@@ -1124,18 +1123,18 @@ async function completeActivity(id){
  completionActivity=ar.data;completionInventory=ir.data||[];
  const sel=document.getElementById('completionInventory');
  sel.innerHTML='<option value="">— Χωρίς εφόδιο —</option>'+completionInventory.map(x=>`<option value="${x.id}">${esc(x.name)} — ${Number(x.quantity||0).toLocaleString('el-GR')} ${esc(x.unit||'')}</option>`).join('');
- document.getElementById('completionQty').value='';
+ const cq=document.getElementById('completionQty');cq.value='';cq.disabled=true;
  document.getElementById('completionAvailable').innerHTML='<small>Επίλεξε εφόδιο για να δεις το διαθέσιμο απόθεμα.</small>';
  document.getElementById('completionModal').classList.remove('hidden');
 }
 function completionInventoryChanged(){
  const id=Number(document.getElementById('completionInventory').value||0),it=completionInventory.find(x=>Number(x.id)===id);
- document.getElementById('completionAvailable').innerHTML=it?`<small>Διαθέσιμο: <b>${Number(it.quantity||0).toLocaleString('el-GR')} ${esc(it.unit||'')}</b></small>`:'<small>Η εργασία θα ολοκληρωθεί χωρίς κατανάλωση εφοδίου.</small>';
+ const q=document.getElementById('completionQty');q.disabled=!it;if(!it)q.value='';else setTimeout(()=>q.focus(),50);document.getElementById('completionAvailable').innerHTML=it?`<small>Διαθέσιμο: <b>${Number(it.quantity||0).toLocaleString('el-GR')} ${esc(it.unit||'')}</b> — γράψε από κάτω την ποσότητα που χρησιμοποίησες.</small>`:'<small>Η εργασία θα ολοκληρωθεί χωρίς κατανάλωση εφοδίου.</small>';
 }
 function closeCompletionModal(){document.getElementById('completionModal').classList.add('hidden');completionActivity=null;completionInventory=[];}
 async function confirmActivityCompletion(){
  if(!completionActivity)return;
- const btn=document.getElementById('confirmCompletionBtn'),invId=Number(document.getElementById('completionInventory').value||0),qty=Number(document.getElementById('completionQty').value||0);
+ const btn=document.getElementById('confirmCompletionBtn'),invId=Number(document.getElementById('completionInventory').value||0),qty=Number(String(document.getElementById('completionQty').value||0).replace(',','.'));
  const it=completionInventory.find(x=>Number(x.id)===invId);
  if(invId && (!Number.isFinite(qty)||qty<=0))return alert('Γράψε την ποσότητα εφοδίου που χρησιμοποιήθηκε.');
  if(it && qty>Number(it.quantity||0))return alert(`Δεν υπάρχει αρκετό απόθεμα. Διαθέσιμο: ${Number(it.quantity||0).toLocaleString('el-GR')} ${it.unit||''}`);
