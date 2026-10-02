@@ -17,7 +17,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.4.1 • Smart Home + PIN</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.5 • Σύγκριση Περιόδων + PIN</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
@@ -114,6 +114,10 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <div class="m">Κέρδος / στρέμμα<b id="rProfitArea">—</b></div>
 </div>
 <h4>🌱 Σύγκριση κερδοφορίας περιόδου</h4><small>Σύγκριση όλων των αγροτεμαχίων / θερμοκηπίων της επιλεγμένης καλλιεργητικής περιόδου.</small><div id="profitabilityComparison"><small>Φόρτωση...</small></div>
+<h4>📊 Σύγκριση καλλιεργητικών περιόδων</h4><small>Επίλεξε δύο περιόδους για να δεις πώς μεταβάλλονται παραγωγή, έσοδα, έξοδα, κόστος/kg και καθαρό αποτέλεσμα.</small>
+<div class="grid" style="margin-top:8px"><label>Περίοδος Α<select id="compareSeasonA"></select></label><label>Περίοδος Β<select id="compareSeasonB"></select></label></div>
+<button class="soft" onclick="compareSeasons()">📈 Σύγκριση περιόδων</button>
+<div id="seasonComparison"><small>Επίλεξε δύο περιόδους.</small></div>
 <h4>Διαλογή πωλήσεων</h4><div id="gradeBreakdown"><small>Δεν υπάρχουν πωλήσεις.</small></div><h4>👥 Πωλήσεις ανά πελάτη / έμπορο</h4><div id="customerBreakdown"><small>Δεν υπάρχουν πωλήσεις.</small></div><h4>💳 Υπόλοιπα πελατών (συνολικά)</h4><div id="paymentBreakdown"><small>Δεν υπάρχουν στοιχεία.</small></div><h4>📦 Κατανάλωση & Κόστος Εφοδίων</h4><div id="inventoryUsageSummary"><small>Δεν υπάρχουν καταναλώσεις εφοδίων.</small></div><h4>Έξοδα ανά κατηγορία</h4><div id="expenseBreakdown"><small>Δεν υπάρχουν έξοδα.</small></div>
 <h4>Ανά μήνα</h4><div id="monthlyReport"><small>Δεν υπάρχουν δεδομένα.</small></div>
 </div>
@@ -875,6 +879,37 @@ await loadReports();
 }
 
 
+
+async function populateSeasonComparisonSelectors(){
+ const a=document.getElementById('compareSeasonA'),b=document.getElementById('compareSeasonB');if(!a||!b)return;
+ const r=await sb.from('seasons').select('id,name,created_at').order('created_at');if(r.error)return;
+ const opts=(r.data||[]).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+ const av=a.value,bv=b.value;a.innerHTML=opts;b.innerHTML=opts;
+ if(av&&[...a.options].some(o=>o.value===av))a.value=av;
+ if(bv&&[...b.options].some(o=>o.value===bv))b.value=bv;else if(b.options.length>1)b.selectedIndex=b.options.length-1;
+ if(!av&&a.options.length>1)a.selectedIndex=Math.max(0,a.options.length-2);
+}
+async function seasonTotals(sid){
+ const gr=await sb.from('greenhouses').select('id,area').eq('season_id',sid);if(gr.error)throw gr.error;
+ const gs=gr.data||[],ids=gs.map(x=>x.id),area=gs.reduce((z,x)=>z+Number(x.area||0),0);
+ if(!ids.length)return {production:0,income:0,expenses:0,profit:0,costkg:null,profitArea:null};
+ const [er,hr,sr]=await Promise.all([sb.from('expenses').select('amount').in('greenhouse_id',ids),sb.from('harvests').select('kg').in('greenhouse_id',ids),sb.from('sales').select('kg,price_per_kg').in('greenhouse_id',ids)]);
+ if(er.error||hr.error||sr.error)throw(er.error||hr.error||sr.error);
+ const expenses=(er.data||[]).reduce((z,x)=>z+Number(x.amount||0),0),production=(hr.data||[]).reduce((z,x)=>z+Number(x.kg||0),0),income=(sr.data||[]).reduce((z,x)=>z+Number(x.kg||0)*Number(x.price_per_kg||0),0),profit=income-expenses;
+ return {production,income,expenses,profit,costkg:production?expenses/production:null,profitArea:area?profit/area:null};
+}
+function pctChange(a,b){if(!a)return null;return (b-a)/Math.abs(a)*100}
+function changeText(a,b,lowerBetter=false){const p=pctChange(a,b);if(p===null)return '—';const sign=p>0?'+':'';return `${sign}${p.toLocaleString('el-GR',{maximumFractionDigits:1})}%`;}
+async function compareSeasons(){
+ const a=document.getElementById('compareSeasonA'),b=document.getElementById('compareSeasonB'),box=document.getElementById('seasonComparison');if(!a||!b||!box)return;
+ if(!a.value||!b.value)return box.innerHTML='<small>Επίλεξε δύο περιόδους.</small>';if(a.value===b.value)return box.innerHTML='<small>Επίλεξε δύο διαφορετικές περιόδους.</small>';
+ box.innerHTML='<small>Υπολογισμός...</small>';
+ try{const [A,B]=await Promise.all([seasonTotals(a.value),seasonTotals(b.value)]),an=a.options[a.selectedIndex].text,bn=b.options[b.selectedIndex].text;
+ const row=(label,av,bv,fmt=euro)=>`<div class="entry"><div class="entryText"><b>${label}</b><br><small>${esc(an)}: ${fmt(av)} • ${esc(bn)}: ${fmt(bv)}</small></div><b>${changeText(av,bv)}</b></div>`;
+ box.innerHTML=`<div class="quickSummary"><b>${esc(an)} ↔ ${esc(bn)}</b></div>${row('Παραγωγή',A.production,B.production,v=>v.toLocaleString('el-GR')+' kg')}${row('Έσοδα',A.income,B.income)}${row('Έξοδα',A.expenses,B.expenses)}${row('Κόστος/kg',A.costkg||0,B.costkg||0)}${row('Καθαρό αποτέλεσμα',A.profit,B.profit)}${row('Κέρδος/στρέμμα',A.profitArea||0,B.profitArea||0)}`;
+ }catch(e){box.innerHTML='<small>Δεν ήταν δυνατή η σύγκριση των περιόδων.</small>';console.error(e)}
+}
+
 async function loadProfitabilityComparison(){
  const box=document.getElementById('profitabilityComparison');if(!box)return;
  if(!season.value){box.innerHTML='<small>Επίλεξε καλλιεργητική περίοδο.</small>';return;}
@@ -894,6 +929,7 @@ async function loadProfitabilityComparison(){
 
 async function loadReports(){
  if(!document.getElementById('rProduction'))return;
+ await populateSeasonComparisonSelectors();
  if(!gh.value){
   if(document.getElementById('homeSelection')){homeSelection.textContent='Επίλεξε περίοδο και αγροτεμάχιο';homeNumbers.innerHTML='<small>Τα βασικά στοιχεία θα εμφανιστούν εδώ.</small>';}
   rProduction.textContent='0 kg';rYield.textContent=rAvgPrice.textContent=rCostKg.textContent=rMargin.textContent='—';if(document.getElementById('rProfitArea'))rProfitArea.textContent='—';
