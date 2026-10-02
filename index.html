@@ -17,7 +17,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.6 • Προϋπολογισμός + PIN</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.7 • Πρόβλεψη Παραγωγής + PIN</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
@@ -168,7 +168,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 
 <div id="page-budget" class="page">
  <div class="card">
-  <div class="reportTitle"><h3>🎯 Προϋπολογισμός Καλλιέργειας</h3><button class="soft" style="width:auto" onclick="loadBudget()">🔄 Ανανέωση</button></div>
+  <div class="reportTitle"><h3>🎯 Προϋπολογισμός Καλλιέργειας</h3><button class="soft" style="width:auto" onclick="refreshBudget(this)">🔄 Ανανέωση</button></div>
   <small>Όρισε στόχους για κάθε αγροτεμάχιο / θερμοκήπιο και παρακολούθησε την πορεία τους.</small>
   <label>Καλλιεργητική περίοδος<select id="budgetSeason" onchange="loadBudgetGreenhouses()"></select></label>
   <label>Αγροτεμάχιο / Θερμοκήπιο<select id="budgetGH" onchange="loadBudgetValues()"></select></label>
@@ -182,6 +182,11 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
  <div class="card">
   <h3>📊 Στόχος vs Πραγματικό</h3>
   <div id="budgetSummary"><small>Επίλεξε αγροτεμάχιο.</small></div>
+ </div>
+ <div class="card">
+  <h3>🔮 Πρόβλεψη Καλλιέργειας</h3>
+  <small>Εκτίμηση με βάση τον στόχο παραγωγής και τη μέχρι σήμερα μέση τιμή πώλησης.</small>
+  <div id="budgetForecast" style="margin-top:10px"><small>Επίλεξε αγροτεμάχιο.</small></div>
  </div>
 </div>
 <div id="page-profile" class="page"><div class="card">
@@ -947,13 +952,24 @@ async function loadProfitabilityComparison(){
 }
 
 
+async function refreshBudget(btn){
+ const old=btn?.innerHTML;
+ if(btn){btn.disabled=true;btn.innerHTML='⏳ Ανανέωση...';}
+ try{
+  await loadBudget();
+  if(btn){btn.innerHTML='✅ Ανανεώθηκε';setTimeout(()=>{btn.innerHTML=old||'🔄 Ανανέωση';btn.disabled=false},900);}
+ }catch(e){
+  console.error(e);
+  if(btn){btn.innerHTML='⚠️ Σφάλμα';setTimeout(()=>{btn.innerHTML=old||'🔄 Ανανέωση';btn.disabled=false},1200);}
+ }
+}
 function budgetStorageKey(gid){return 'geofylo_budget_'+(user?.id||'')+'_'+gid}
 function budgetRead(gid){try{return JSON.parse(localStorage.getItem(budgetStorageKey(gid))||'{}')}catch(_e){return {}}}
 async function loadBudget(){
  const sEl=document.getElementById('budgetSeason');if(!sEl||!user)return;
  const old=String(sEl.value||season?.value||'');
  const r=await sb.from('seasons').select('id,name').eq('user_id',user.id).order('created_at');
- if(r.error){budgetSummary.innerHTML='<small>Σφάλμα: '+esc(r.error.message)+'</small>';return}
+ if(r.error){const box=document.getElementById('budgetSummary');if(box)box.innerHTML='<small>Σφάλμα: '+esc(r.error.message)+'</small>';return}
  sEl.innerHTML=(r.data||[]).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
  if(old&&(r.data||[]).some(x=>String(x.id)===old))sEl.value=old;
  await loadBudgetGreenhouses();
@@ -961,24 +977,38 @@ async function loadBudget(){
 async function loadBudgetGreenhouses(){
  const sEl=document.getElementById('budgetSeason'),gEl=document.getElementById('budgetGH');if(!sEl||!gEl)return;
  const old=String(gEl.value||gh?.value||'');
- if(!sEl.value){gEl.innerHTML='';budgetSummary.innerHTML='<small>Δεν υπάρχει περίοδος.</small>';return}
+ if(!sEl.value){gEl.innerHTML='';const box=document.getElementById('budgetSummary');if(box)box.innerHTML='<small>Δεν υπάρχει περίοδος.</small>';return}
  const r=await sb.from('greenhouses').select('id,name,crop').eq('season_id',+sEl.value).order('name');
- if(r.error){budgetSummary.innerHTML='<small>Σφάλμα: '+esc(r.error.message)+'</small>';return}
+ if(r.error){const box=document.getElementById('budgetSummary');if(box)box.innerHTML='<small>Σφάλμα: '+esc(r.error.message)+'</small>';return}
  gEl.innerHTML=(r.data||[]).map(x=>`<option value="${x.id}">${esc(x.name)} • ${esc(x.crop)}</option>`).join('');
  if(old&&(r.data||[]).some(x=>String(x.id)===old))gEl.value=old;
  await loadBudgetValues();
 }
 async function loadBudgetValues(){
- const gEl=document.getElementById('budgetGH');if(!gEl?.value){budgetSummary.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';return}
+ const gEl=document.getElementById('budgetGH');if(!gEl?.value){const box=document.getElementById('budgetSummary');if(box)box.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';return}
  const gid=+gEl.value,b=budgetRead(gid);
  budgetExpenseTarget.value=b.expenseTarget??'';budgetProductionTarget.value=b.productionTarget??'';budgetIncomeTarget.value=b.incomeTarget??'';
  const [er,hr,sr]=await Promise.all([sb.from('expenses').select('amount').eq('greenhouse_id',gid),sb.from('harvests').select('kg').eq('greenhouse_id',gid),sb.from('sales').select('kg,price_per_kg').eq('greenhouse_id',gid)]);
- if(er.error||hr.error||sr.error){budgetSummary.innerHTML='<small>Δεν ήταν δυνατή η φόρτωση των πραγματικών στοιχείων.</small>';return}
+ if(er.error||hr.error||sr.error){const box=document.getElementById('budgetSummary');if(box)box.innerHTML='<small>Δεν ήταν δυνατή η φόρτωση των πραγματικών στοιχείων.</small>';return}
  const expense=(er.data||[]).reduce((z,x)=>z+Number(x.amount||0),0),production=(hr.data||[]).reduce((z,x)=>z+Number(x.kg||0),0),income=(sr.data||[]).reduce((z,x)=>z+Number(x.kg||0)*Number(x.price_per_kg||0),0);
  const eT=Number(b.expenseTarget||0),pT=Number(b.productionTarget||0),iT=Number(b.incomeTarget||0);
  const pct=(v,t)=>t?(v/t*100):null,fmtPct=x=>x===null?'—':x.toLocaleString('el-GR',{maximumFractionDigits:1})+'%';
  const row=(title,target,actual,unit,isExpense=false)=>{const pc=pct(actual,target),diff=isExpense?target-actual:actual-target;return `<div class="entry"><div class="entryText"><b>${title}</b><br><small>Στόχος: ${unit==='€'?euro(target):target.toLocaleString('el-GR')+' kg'} • Πρόοδος: ${fmtPct(pc)}</small></div><div style="text-align:right"><b>${unit==='€'?euro(actual):actual.toLocaleString('el-GR')+' kg'}</b><br><small>Απόκλιση ${unit==='€'?euro(diff):diff.toLocaleString('el-GR')+' kg'}</small></div></div>`};
+ const budgetSummary=document.getElementById('budgetSummary');if(!budgetSummary)return;
  budgetSummary.innerHTML=(eT||pT||iT)?(row('💶 Έξοδα',eT,expense,'€',true)+row('⚖️ Παραγωγή',pT,production,'kg')+row('💰 Έσοδα',iT,income,'€')):'<small>Δεν έχουν οριστεί ακόμη στόχοι για αυτό το αγροτεμάχιο.</small>';
+ const forecast=document.getElementById('budgetForecast');
+ if(forecast){
+  if(!pT){forecast.innerHTML='<small>Όρισε στόχο παραγωγής για να εμφανιστεί πρόβλεψη.</small>';return;}
+  const soldKg=(sr.data||[]).reduce((z,x)=>z+Number(x.kg||0),0),avgPrice=soldKg?income/soldKg:0;
+  const estimatedIncome=avgPrice?pT*avgPrice:iT;
+  const estimatedProfit=estimatedIncome-expense;
+  const prodProgress=pct(production,pT),expenseProgress=pct(expense,eT);
+  let status='🟢 Εντός στόχου';
+  if(eT&&expense>eT)status='🔴 Υπέρβαση προϋπολογισμού';
+  else if(eT&&expenseProgress!==null&&expenseProgress>=85)status='🟠 Πλησιάζεις το όριο κόστους';
+  const frow=(label,value)=>`<div class="entry"><div class="entryText"><b>${label}</b></div><div style="text-align:right"><b>${value}</b></div></div>`;
+  forecast.innerHTML=frow('🎯 Στόχος παραγωγής',pT.toLocaleString('el-GR')+' kg')+frow('📦 Παραγωγή μέχρι σήμερα',production.toLocaleString('el-GR')+' kg')+frow('📈 Πρόοδος παραγωγής',fmtPct(prodProgress))+frow('💶 Μέση τιμή πώλησης',avgPrice?euro(avgPrice)+'/kg':'—')+frow('🔮 Εκτιμώμενα τελικά έσοδα',estimatedIncome?euro(estimatedIncome):'—')+frow('🧾 Έξοδα μέχρι σήμερα',euro(expense))+frow('💰 Εκτιμώμενο αποτέλεσμα',estimatedIncome?euro(estimatedProfit):'—')+`<div class="entry"><div class="entryText"><b>${status}</b></div></div>`;
+ }
 }
 async function saveBudget(){
  const gid=Number(document.getElementById('budgetGH')?.value);if(!gid)return alert('Επίλεξε αγροτεμάχιο / θερμοκήπιο.');
