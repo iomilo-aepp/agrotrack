@@ -17,14 +17,14 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.5 • Σύγκριση Περιόδων + PIN</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.6 • Προϋπολογισμός + PIN</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
 <div id="pinAuthBox" class="hidden" style="text-align:center"><h2>🔐 Γρήγορη είσοδος</h2><small id="pinUserLabel"></small><input id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" style="text-align:center;font-size:30px;letter-spacing:12px" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)" onkeydown="if(event.key==='Enter')unlockWithPin()"><button onclick="unlockWithPin()">Ξεκλείδωμα</button><button class="soft" onclick="useEmailLogin()">Σύνδεση με email / άλλο λογαριασμό</button><small>Ο PIN ισχύει μόνο σε αυτή τη συσκευή.</small></div>
 <p id="msg"></p></div></div>
 
-<div id="main" class="hidden"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small id="who"></small><nav class="bottomNav"><button id="nav-home" class="active" onclick="showPage('home')"><span class="ico">🏠</span>Αρχική</button><button id="nav-entry" onclick="showPage('entry')"><span class="ico">➕</span>Καταχώρηση</button><button id="nav-movements" onclick="showPage('movements')"><span class="ico">🧾</span>Κινήσεις</button><button id="nav-calendar" onclick="showPage('calendar')"><span class="ico">📅</span>Ημερολόγιο</button><button id="nav-reports" onclick="showPage('reports')"><span class="ico">📊</span>Αναφορές</button><button id="nav-customers" onclick="showPage('customers')"><span class="ico">👥</span>Πελάτες</button><button id="nav-payments" onclick="showPage('payments')"><span class="ico">💳</span>Πληρωμές</button><button id="nav-inventory" onclick="showPage('inventory')"><span class="ico">📦</span>Αποθήκη</button><button id="nav-suppliers" onclick="showPage('suppliers')"><span class="ico">🏪</span>Προμηθευτές</button><button id="nav-cashflow" onclick="showPage('cashflow')"><span class="ico">💰</span>Ταμείο</button><button id="nav-profile" onclick="showPage('profile')"><span class="ico">👤</span>Προφίλ</button></nav>
+<div id="main" class="hidden"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small id="who"></small><nav class="bottomNav"><button id="nav-home" class="active" onclick="showPage('home')"><span class="ico">🏠</span>Αρχική</button><button id="nav-entry" onclick="showPage('entry')"><span class="ico">➕</span>Καταχώρηση</button><button id="nav-movements" onclick="showPage('movements')"><span class="ico">🧾</span>Κινήσεις</button><button id="nav-calendar" onclick="showPage('calendar')"><span class="ico">📅</span>Ημερολόγιο</button><button id="nav-reports" onclick="showPage('reports')"><span class="ico">📊</span>Αναφορές</button><button id="nav-customers" onclick="showPage('customers')"><span class="ico">👥</span>Πελάτες</button><button id="nav-payments" onclick="showPage('payments')"><span class="ico">💳</span>Πληρωμές</button><button id="nav-inventory" onclick="showPage('inventory')"><span class="ico">📦</span>Αποθήκη</button><button id="nav-suppliers" onclick="showPage('suppliers')"><span class="ico">🏪</span>Προμηθευτές</button><button id="nav-cashflow" onclick="showPage('cashflow')"><span class="ico">💰</span>Ταμείο</button><button id="nav-budget" onclick="showPage('budget')"><span class="ico">🎯</span>Προϋπολογισμός</button><button id="nav-profile" onclick="showPage('profile')"><span class="ico">👤</span>Προφίλ</button></nav>
 <div id="page-home" class="page active"><div class="card" id="smartHomeCard">
 <div><h2 style="margin:0">☀️ Σήμερα στο GeoFylo</h2><small>Ό,τι χρειάζεται την προσοχή σου με μια ματιά.</small></div>
 <div class="dashGrid" style="margin-top:12px">
@@ -165,6 +165,25 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <div id="suppliersList" style="margin-top:12px"><small>Δεν υπάρχουν προμηθευτές.</small></div><div id="supplierCard" class="card hidden"></div></div>
 <div class="card"><h3>💳 Πληρωμή προμηθευτή</h3><label>Προμηθευτής<select id="supplierPaymentSupplier"><option value="">— Επίλεξε προμηθευτή —</option></select></label><label>Ημερομηνία<input id="supplierPaymentDate" type="date"></label><label>Ποσό €<input id="supplierPaymentAmount" type="number" step="0.01" min="0.01" placeholder="0,00"></label><label>Τρόπος πληρωμής<select id="supplierPaymentMethod"><option value="Μετρητά">Μετρητά</option><option value="Τράπεζα">Τράπεζα</option><option value="Άλλο">Άλλο</option></select></label><label>Σημείωση<input id="supplierPaymentNote" placeholder="Σημείωση"></label><button id="saveSupplierPaymentBtn" onclick="saveSupplierPayment()">💾 Αποθήκευση πληρωμής</button><button class="soft hidden" id="cancelSupplierPaymentBtn" onclick="cancelSupplierPaymentEdit()">Ακύρωση επεξεργασίας</button><h4>Ιστορικό πληρωμών</h4><div id="supplierPaymentsPager"></div><div id="supplierPaymentsList"><small>Δεν υπάρχουν πληρωμές.</small></div></div></div>
 <div id="page-cashflow" class="page"><div class="card"><h3>💰 Ταμείο / Ταμειακές Ροές</h3><small>Πραγματικές εισπράξεις πελατών και πληρωμές προμηθευτών.</small><div class="dashGrid"><div class="dashBox"><small>💵 Εισπράξεις πελατών</small><b id="cashIn">0,00 €</b></div><div class="dashBox"><small>🏪 Πληρωμές προμηθευτών</small><b id="cashOut">0,00 €</b></div><div class="dashBox"><small>📈 Καθαρή ταμειακή ροή</small><b id="cashNet">0,00 €</b></div></div></div><div class="card"><h3>📅 Ανάλυση ανά μήνα</h3><div id="cashMonthly"><small>Δεν υπάρχουν ταμειακές κινήσεις.</small></div></div><div class="card"><h3>🧾 Πρόσφατες ταμειακές κινήσεις</h3><div id="cashPager"></div><div id="cashMovements"><small>Δεν υπάρχουν ταμειακές κινήσεις.</small></div></div></div>
+
+<div id="page-budget" class="page">
+ <div class="card">
+  <div class="reportTitle"><h3>🎯 Προϋπολογισμός Καλλιέργειας</h3><button class="soft" style="width:auto" onclick="loadBudget()">🔄 Ανανέωση</button></div>
+  <small>Όρισε στόχους για κάθε αγροτεμάχιο / θερμοκήπιο και παρακολούθησε την πορεία τους.</small>
+  <label>Καλλιεργητική περίοδος<select id="budgetSeason" onchange="loadBudgetGreenhouses()"></select></label>
+  <label>Αγροτεμάχιο / Θερμοκήπιο<select id="budgetGH" onchange="loadBudgetValues()"></select></label>
+ </div>
+ <div class="card">
+  <h3>🎯 Στόχοι</h3>
+  <div class="grid"><label>Προϋπολογισμός εξόδων €<input id="budgetExpenseTarget" type="number" min="0" step="0.01" placeholder="π.χ. 10000"></label><label>Στόχος παραγωγής kg<input id="budgetProductionTarget" type="number" min="0" step="0.01" placeholder="π.χ. 20000"></label></div>
+  <label>Στόχος εσόδων €<input id="budgetIncomeTarget" type="number" min="0" step="0.01" placeholder="π.χ. 18000"></label>
+  <button onclick="saveBudget()">💾 Αποθήκευση στόχων</button>
+ </div>
+ <div class="card">
+  <h3>📊 Στόχος vs Πραγματικό</h3>
+  <div id="budgetSummary"><small>Επίλεξε αγροτεμάχιο.</small></div>
+ </div>
+</div>
 <div id="page-profile" class="page"><div class="card">
 <h3>👤 Προφίλ Παραγωγού</h3>
 <small>Τα στοιχεία αποθηκεύονται στον προσωπικό σου λογαριασμό.</small>
@@ -388,7 +407,7 @@ function addTabRefreshButtons(){
  const names=['entry','movements','calendar','reports','customers','payments','inventory','suppliers','cashflow','profile'];
  names.forEach(n=>{const p=document.getElementById('page-'+n);if(!p||p.querySelector(':scope > .tabRefresh'))return;const b=document.createElement('button');b.className='soft tabRefresh';b.type='button';b.innerHTML='🔄 Ανανέωση';b.onclick=()=>refreshTab(n,b);p.prepend(b);});
 }
-function showPage(n){document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.bottomNav button').forEach(e=>e.classList.remove('active'));document.getElementById('page-'+n)?.classList.add('active');document.getElementById('nav-'+n)?.classList.add('active');if(n==='home')dash();if(n==='movements')dash();if(n==='calendar')loadCalendar();if(n==='reports')loadReports();if(n==='profile')loadProfile();if(n==='customers')loadCustomers();if(n==='payments')loadPayments();if(n==='inventory')loadInventory();if(n==='suppliers')loadSuppliers();if(n==='cashflow')loadCashflow();window.scrollTo({top:0,behavior:'smooth'});}
+function showPage(n){document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.bottomNav button').forEach(e=>e.classList.remove('active'));document.getElementById('page-'+n)?.classList.add('active');document.getElementById('nav-'+n)?.classList.add('active');if(n==='home')dash();if(n==='movements')dash();if(n==='calendar')loadCalendar();if(n==='reports')loadReports();if(n==='profile')loadProfile();if(n==='customers')loadCustomers();if(n==='payments')loadPayments();if(n==='inventory')loadInventory();if(n==='suppliers')loadSuppliers();if(n==='cashflow')loadCashflow();if(n==='budget')loadBudget();window.scrollTo({top:0,behavior:'smooth'});}
 
 const I18N={
  el:{quick:'🌱 Γρήγορη καταχώρηση',choose:'Επίλεξε τι θέλεις να καταχωρήσεις',expense:'💶 Έξοδο',harvest:'⚖️ Συγκομιδή',sale:'💰 Πώληση',activity:'📅 Εργασία',voice:'🎤 Πες το με τη φωνή',current:'Τρέχουσα επιλογή',reports:'📊 Αναφορές & Στατιστικά',calendar:'📅 Ημερολόγιο Καλλιέργειας',newEntry:'Νέα καταχώρηση'},
@@ -925,6 +944,48 @@ async function loadProfitabilityComparison(){
  if(er.error||hr.error||sr.error){box.innerHTML='<small>Δεν ήταν δυνατή η σύγκριση.</small>';return;}
  const rows=gs.map(g=>{const expenses=(er.data||[]).filter(x=>x.greenhouse_id==g.id).reduce((z,x)=>z+Number(x.amount||0),0);const production=(hr.data||[]).filter(x=>x.greenhouse_id==g.id).reduce((z,x)=>z+Number(x.kg||0),0);const income=(sr.data||[]).filter(x=>x.greenhouse_id==g.id).reduce((z,x)=>z+Number(x.kg||0)*Number(x.price_per_kg||0),0);const profit=income-expenses,area=Number(g.area||0);return {g,expenses,production,income,profit,ppa:area?profit/area:null,costkg:production?expenses/production:null};}).sort((a,b)=>b.profit-a.profit);
  box.innerHTML=rows.map(r=>`<div class="entry"><div class="entryText"><b>${esc(r.g.name)} • ${esc(r.g.crop)}</b><br><small>Παραγωγή ${r.production.toLocaleString('el-GR')} kg • Έσοδα ${euro(r.income)} • Έξοδα ${euro(r.expenses)}<br>Κόστος/kg ${r.costkg===null?'—':euro(r.costkg)} • Κέρδος/στρ. ${r.ppa===null?'—':euro(r.ppa)}</small></div><div style="text-align:right"><b>${euro(r.profit)}</b><br><small>αποτέλεσμα</small></div></div>`).join('');
+}
+
+
+function budgetStorageKey(gid){return 'geofylo_budget_'+(user?.id||'')+'_'+gid}
+function budgetRead(gid){try{return JSON.parse(localStorage.getItem(budgetStorageKey(gid))||'{}')}catch(_e){return {}}}
+async function loadBudget(){
+ const sEl=document.getElementById('budgetSeason');if(!sEl||!user)return;
+ const old=String(sEl.value||season?.value||'');
+ const r=await sb.from('seasons').select('id,name').eq('user_id',user.id).order('created_at');
+ if(r.error){budgetSummary.innerHTML='<small>Σφάλμα: '+esc(r.error.message)+'</small>';return}
+ sEl.innerHTML=(r.data||[]).map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+ if(old&&(r.data||[]).some(x=>String(x.id)===old))sEl.value=old;
+ await loadBudgetGreenhouses();
+}
+async function loadBudgetGreenhouses(){
+ const sEl=document.getElementById('budgetSeason'),gEl=document.getElementById('budgetGH');if(!sEl||!gEl)return;
+ const old=String(gEl.value||gh?.value||'');
+ if(!sEl.value){gEl.innerHTML='';budgetSummary.innerHTML='<small>Δεν υπάρχει περίοδος.</small>';return}
+ const r=await sb.from('greenhouses').select('id,name,crop').eq('season_id',+sEl.value).order('name');
+ if(r.error){budgetSummary.innerHTML='<small>Σφάλμα: '+esc(r.error.message)+'</small>';return}
+ gEl.innerHTML=(r.data||[]).map(x=>`<option value="${x.id}">${esc(x.name)} • ${esc(x.crop)}</option>`).join('');
+ if(old&&(r.data||[]).some(x=>String(x.id)===old))gEl.value=old;
+ await loadBudgetValues();
+}
+async function loadBudgetValues(){
+ const gEl=document.getElementById('budgetGH');if(!gEl?.value){budgetSummary.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';return}
+ const gid=+gEl.value,b=budgetRead(gid);
+ budgetExpenseTarget.value=b.expenseTarget??'';budgetProductionTarget.value=b.productionTarget??'';budgetIncomeTarget.value=b.incomeTarget??'';
+ const [er,hr,sr]=await Promise.all([sb.from('expenses').select('amount').eq('greenhouse_id',gid),sb.from('harvests').select('kg').eq('greenhouse_id',gid),sb.from('sales').select('kg,price_per_kg').eq('greenhouse_id',gid)]);
+ if(er.error||hr.error||sr.error){budgetSummary.innerHTML='<small>Δεν ήταν δυνατή η φόρτωση των πραγματικών στοιχείων.</small>';return}
+ const expense=(er.data||[]).reduce((z,x)=>z+Number(x.amount||0),0),production=(hr.data||[]).reduce((z,x)=>z+Number(x.kg||0),0),income=(sr.data||[]).reduce((z,x)=>z+Number(x.kg||0)*Number(x.price_per_kg||0),0);
+ const eT=Number(b.expenseTarget||0),pT=Number(b.productionTarget||0),iT=Number(b.incomeTarget||0);
+ const pct=(v,t)=>t?(v/t*100):null,fmtPct=x=>x===null?'—':x.toLocaleString('el-GR',{maximumFractionDigits:1})+'%';
+ const row=(title,target,actual,unit,isExpense=false)=>{const pc=pct(actual,target),diff=isExpense?target-actual:actual-target;return `<div class="entry"><div class="entryText"><b>${title}</b><br><small>Στόχος: ${unit==='€'?euro(target):target.toLocaleString('el-GR')+' kg'} • Πρόοδος: ${fmtPct(pc)}</small></div><div style="text-align:right"><b>${unit==='€'?euro(actual):actual.toLocaleString('el-GR')+' kg'}</b><br><small>Απόκλιση ${unit==='€'?euro(diff):diff.toLocaleString('el-GR')+' kg'}</small></div></div>`};
+ budgetSummary.innerHTML=(eT||pT||iT)?(row('💶 Έξοδα',eT,expense,'€',true)+row('⚖️ Παραγωγή',pT,production,'kg')+row('💰 Έσοδα',iT,income,'€')):'<small>Δεν έχουν οριστεί ακόμη στόχοι για αυτό το αγροτεμάχιο.</small>';
+}
+async function saveBudget(){
+ const gid=Number(document.getElementById('budgetGH')?.value);if(!gid)return alert('Επίλεξε αγροτεμάχιο / θερμοκήπιο.');
+ const expenseTarget=Number(budgetExpenseTarget.value||0),productionTarget=Number(budgetProductionTarget.value||0),incomeTarget=Number(budgetIncomeTarget.value||0);
+ if([expenseTarget,productionTarget,incomeTarget].some(x=>!Number.isFinite(x)||x<0))return alert('Οι στόχοι πρέπει να είναι θετικοί αριθμοί.');
+ localStorage.setItem(budgetStorageKey(gid),JSON.stringify({expenseTarget,productionTarget,incomeTarget,updatedAt:new Date().toISOString()}));
+ await loadBudgetValues();alert('Οι στόχοι αποθηκεύτηκαν.');
 }
 
 async function loadReports(){
