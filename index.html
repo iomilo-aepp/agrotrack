@@ -202,7 +202,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
   <div id="budgetForecast" style="margin-top:10px"><small>Επίλεξε αγροτεμάχιο.</small></div>
  </div>
 </div>
-<div id="page-admin" class="page"><div class="card"><h2 style="margin-top:0">👑 Διαχείριση Συνδρομών</h2><small>Μόνο για διαχειριστές GeoFylo. Ενεργοποίησε ή επέκτεινε συνδρομές πελατών.</small><div style="margin-top:12px"><button onclick="loadAdminSubscriptions()">🔄 Ανανέωση</button></div><div id="adminSubMsg" style="margin-top:10px"></div><div id="adminSubList" style="margin-top:12px"></div></div></div>
+<div id="page-admin" class="page"><div class="card"><h2 style="margin-top:0">👑 Διαχείριση Συνδρομών</h2><small>Μόνο για διαχειριστές GeoFylo. Καταχώρησε πληρωμή και επέκτεινε τη συνδρομή του πελάτη.</small><div style="margin-top:12px"><button onclick="loadAdminSubscriptions()">🔄 Ανανέωση</button></div><div id="adminSubMsg" style="margin-top:10px"></div><div id="adminStats" style="margin-top:12px"></div><div id="adminSubList" style="margin-top:12px"></div></div><div class="card"><h3>💶 Ιστορικό πληρωμών συνδρομών</h3><div id="adminPaymentHistory"><small>Φόρτωση...</small></div></div></div>
 <div id="page-profile" class="page"><div class="card">
 <h3>👤 Προφίλ Παραγωγού</h3>
 <small>Τα στοιχεία αποθηκεύονται στον προσωπικό σου λογαριασμό.</small>
@@ -524,17 +524,36 @@ function adminStatusLabel(r){
 async function loadAdminSubscriptions(){
  const box=document.getElementById('adminSubList'),msg=document.getElementById('adminSubMsg');if(!box)return;
  box.innerHTML='<small>Φόρτωση συνδρομών...</small>';if(msg)msg.textContent='';
- const r=await sb.rpc('admin_list_subscriptions');
+ const [r,pay]=await Promise.all([sb.rpc('admin_list_subscriptions'),sb.from('subscription_payments').select('*').order('payment_date',{ascending:false}).order('created_at',{ascending:false})]);
  if(r.error){box.innerHTML='';if(msg)msg.textContent='❌ '+r.error.message;return}
- const rows=r.data||[];if(!rows.length){box.innerHTML='<small>Δεν υπάρχουν συνδρομές.</small>';return}
- box.innerHTML=rows.map(x=>`<div class="card" style="margin:10px 0;padding:14px"><b>${esc(x.full_name||x.email||'Χρήστης')}</b><br><small>${esc(x.email||'')}</small><div style="margin-top:8px"><b>${adminStatusLabel(x)}</b> • Πακέτο: ${esc(x.plan||'—')}</div><small>Trial έως: ${adminDate(x.trial_ends_at)} • Συνδρομή έως: ${adminDate(x.subscription_ends_at)}</small><div class="quickGrid" style="margin-top:10px"><button onclick="adminExtend('${x.user_id}',1)">+1 μήνα</button><button onclick="adminExtend('${x.user_id}',3)">+3 μήνες</button><button onclick="adminExtend('${x.user_id}',6)">+6 μήνες</button><button onclick="adminExtend('${x.user_id}',12)">+12 μήνες</button></div></div>`).join('');
+ if(pay.error){if(msg)msg.textContent='❌ Πληρωμές: '+pay.error.message}
+ const rows=r.data||[],payments=pay.data||[];
+ const active=rows.filter(x=>adminStatusLabel(x).includes('Ενεργή')).length,total=payments.reduce((a,x)=>a+Number(x.amount||0),0);
+ const stats=document.getElementById('adminStats');if(stats)stats.innerHTML=`<div class="grid"><div><small>Ενεργοί συνδρομητές</small><br><b>${active}</b></div><div><small>Καταγεγραμμένα έσοδα</small><br><b>${eur(total)}</b></div></div>`;
+ if(!rows.length){box.innerHTML='<small>Δεν υπάρχουν συνδρομές.</small>';return}
+ box.innerHTML=rows.map(x=>`<div class="card" style="margin:10px 0;padding:14px"><b>${esc(x.full_name||x.email||'Χρήστης')}</b><br><small>${esc(x.email||'')}</small><div style="margin-top:8px"><b>${adminStatusLabel(x)}</b> • Πακέτο: ${esc(x.plan||'—')}</div><small>Trial έως: ${adminDate(x.trial_ends_at)} • Συνδρομή έως: ${adminDate(x.subscription_ends_at)}</small><div class="quickGrid" style="margin-top:10px"><button onclick="openSubscriptionPayment('${x.user_id}',1,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+1 μήνα</button><button onclick="openSubscriptionPayment('${x.user_id}',3,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+3 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',6,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+6 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',12,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">+12 μήνες</button></div></div>`).join('');
+ renderAdminPaymentHistory(payments,rows);
 }
-async function adminExtend(uid,months){
- if(!confirm(`Να προστεθούν ${months} μήνες στη συνδρομή αυτού του χρήστη;`))return;
- const msg=document.getElementById('adminSubMsg');if(msg)msg.textContent='⏳ Ενημέρωση συνδρομής...';
- const r=await sb.rpc('admin_extend_subscription',{target_user_id:uid,months_to_add:months});
- if(r.error){if(msg)msg.textContent='❌ '+r.error.message;return}
- if(msg)msg.textContent='✅ Η συνδρομή ενημερώθηκε.';await loadAdminSubscriptions();
+function openSubscriptionPayment(uid,months,name){
+ const amount=prompt(`${name}\n${months} μήνες\n\nΠοσό πληρωμής (€):`,'');if(amount===null)return;
+ const n=Number(String(amount).replace(',','.'));if(!Number.isFinite(n)||n<0){alert('Μη έγκυρο ποσό.');return}
+ const method=prompt('Τρόπος πληρωμής (π.χ. Μετρητά, Τραπεζική κατάθεση, IRIS):','Μετρητά');if(method===null)return;
+ const note=prompt('Σημείωση (προαιρετικά):','');if(note===null)return;
+ adminExtendWithPayment(uid,months,n,method,note);
+}
+async function adminExtendWithPayment(uid,months,amount,method,note){
+ const msg=document.getElementById('adminSubMsg');if(msg)msg.textContent='⏳ Καταχώρηση πληρωμής και συνδρομής...';
+ const ext=await sb.rpc('admin_extend_subscription',{target_user_id:uid,months_to_add:months});
+ if(ext.error){if(msg)msg.textContent='❌ '+ext.error.message;return}
+ const ins=await sb.from('subscription_payments').insert({user_id:uid,months,amount,payment_method:method||null,note:note||null,created_by:user.id});
+ if(ins.error){if(msg)msg.textContent='⚠️ Η συνδρομή επεκτάθηκε, αλλά η πληρωμή δεν καταγράφηκε: '+ins.error.message;await loadAdminSubscriptions();return}
+ if(msg)msg.textContent='✅ Πληρωμή και συνδρομή καταχωρήθηκαν.';await loadAdminSubscriptions();
+}
+function renderAdminPaymentHistory(payments,rows){
+ const box=document.getElementById('adminPaymentHistory');if(!box)return;
+ if(!payments.length){box.innerHTML='<small>Δεν υπάρχουν καταγεγραμμένες πληρωμές.</small>';return}
+ const names=Object.fromEntries(rows.map(x=>[x.user_id,x.full_name||x.email||'Χρήστης']));
+ box.innerHTML=payments.slice(0,100).map(p=>`<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><b>${esc(names[p.user_id]||'Χρήστης')}</b> • <b>${eur(p.amount)}</b><br><small>${adminDate(p.payment_date)} • ${p.months} μήνες${p.payment_method?' • '+esc(p.payment_method):''}${p.note?' • '+esc(p.note):''}</small></div>`).join('');
 }
 async function enter(u){
  user=u;
