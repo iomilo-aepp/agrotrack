@@ -17,14 +17,14 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.8 • Έξυπνες Ειδοποιήσεις + PIN</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.9 • Κέντρο Εργασιών & Υπενθυμίσεων + PIN</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
 <div id="pinAuthBox" class="hidden" style="text-align:center"><h2>🔐 Γρήγορη είσοδος</h2><small id="pinUserLabel"></small><input id="pinInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" style="text-align:center;font-size:30px;letter-spacing:12px" oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)" onkeydown="if(event.key==='Enter')unlockWithPin()"><button onclick="unlockWithPin()">Ξεκλείδωμα</button><button class="soft" onclick="useEmailLogin()">Σύνδεση με email / άλλο λογαριασμό</button><small>Ο PIN ισχύει μόνο σε αυτή τη συσκευή.</small></div>
 <p id="msg"></p></div></div>
 
-<div id="main" class="hidden"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small id="who"></small><nav class="bottomNav"><button id="nav-home" class="active" onclick="showPage('home')"><span class="ico">🏠</span>Αρχική</button><button id="nav-entry" onclick="showPage('entry')"><span class="ico">➕</span>Καταχώρηση</button><button id="nav-movements" onclick="showPage('movements')"><span class="ico">🧾</span>Κινήσεις</button><button id="nav-calendar" onclick="showPage('calendar')"><span class="ico">📅</span>Ημερολόγιο</button><button id="nav-reports" onclick="showPage('reports')"><span class="ico">📊</span>Αναφορές</button><button id="nav-customers" onclick="showPage('customers')"><span class="ico">👥</span>Πελάτες</button><button id="nav-payments" onclick="showPage('payments')"><span class="ico">💳</span>Πληρωμές</button><button id="nav-inventory" onclick="showPage('inventory')"><span class="ico">📦</span>Αποθήκη</button><button id="nav-suppliers" onclick="showPage('suppliers')"><span class="ico">🏪</span>Προμηθευτές</button><button id="nav-cashflow" onclick="showPage('cashflow')"><span class="ico">💰</span>Ταμείο</button><button id="nav-budget" onclick="showPage('budget')"><span class="ico">🎯</span>Προϋπολογισμός</button><button id="nav-profile" onclick="showPage('profile')"><span class="ico">👤</span>Προφίλ</button></nav>
+<div id="main" class="hidden"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small id="who"></small><nav class="bottomNav"><button id="nav-home" class="active" onclick="showPage('home')"><span class="ico">🏠</span>Αρχική</button><button id="nav-entry" onclick="showPage('entry')"><span class="ico">➕</span>Καταχώρηση</button><button id="nav-movements" onclick="showPage('movements')"><span class="ico">🧾</span>Κινήσεις</button><button id="nav-calendar" onclick="showPage('calendar')"><span class="ico">📅</span>Εργασίες</button><button id="nav-reports" onclick="showPage('reports')"><span class="ico">📊</span>Αναφορές</button><button id="nav-customers" onclick="showPage('customers')"><span class="ico">👥</span>Πελάτες</button><button id="nav-payments" onclick="showPage('payments')"><span class="ico">💳</span>Πληρωμές</button><button id="nav-inventory" onclick="showPage('inventory')"><span class="ico">📦</span>Αποθήκη</button><button id="nav-suppliers" onclick="showPage('suppliers')"><span class="ico">🏪</span>Προμηθευτές</button><button id="nav-cashflow" onclick="showPage('cashflow')"><span class="ico">💰</span>Ταμείο</button><button id="nav-budget" onclick="showPage('budget')"><span class="ico">🎯</span>Προϋπολογισμός</button><button id="nav-profile" onclick="showPage('profile')"><span class="ico">👤</span>Προφίλ</button></nav>
 <div id="page-home" class="page active"><div class="card" id="smartHomeCard">
 <div><h2 style="margin:0">☀️ Σήμερα στο GeoFylo</h2><small>Ό,τι χρειάζεται την προσοχή σου με μια ματιά.</small></div>
 <div class="dashGrid" style="margin-top:12px">
@@ -94,10 +94,23 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <div id="movementCount" style="margin-top:10px"><small></small></div>
 <div id="movementsList" style="margin-top:6px"><small>Δεν υπάρχουν κινήσεις.</small></div>
 </div>
-</div><div id="page-calendar" class="page"><div class="card"><h3 id="tCalendar">📅 Ημερολόγιο Καλλιέργειας</h3>
-<div class="grid"><div><small>Μήνας</small><input id="calMonth" type="month" onchange="loadCalendar()"></div>
-<div><small>Τύπος εργασίας</small><select id="calType" onchange="loadCalendar()"><option value="">Όλες οι εργασίες</option><option>Λίπανση</option><option>Ψεκασμός / Φυτοπροστασία</option><option>Πότισμα</option><option>Φύτευση</option><option>Κλάδεμα</option><option>Εργασία προσωπικού</option><option>Καθαρισμός</option><option>Συντήρηση</option><option>Άλλη εργασία</option></select></div></div>
-<button class="soft" onclick="loadCalendar()">🔄 Ανανέωση ημερολογίου</button>
+</div><div id="page-calendar" class="page">
+<div class="card"><div class="reportTitle"><h3 id="tCalendar">📅 Κέντρο Εργασιών & Υπενθυμίσεων</h3><button class="soft" style="width:auto" onclick="loadCalendar()">🔄</button></div>
+<small>Οι εκκρεμείς εργασίες του επιλεγμένου αγροτεμαχίου, οργανωμένες ανά προτεραιότητα.</small>
+<div class="metrics" style="margin-top:12px">
+<div class="m">⚠️ Εκπρόθεσμες<b id="taskOverdueCount">0</b></div>
+<div class="m">📌 Σήμερα<b id="taskTodayCount">0</b></div>
+<div class="m">⏳ Επόμενες<b id="taskUpcomingCount">0</b></div>
+</div>
+<button onclick="quickEntry('activity')">➕ Νέα εργασία</button>
+</div>
+<div class="card"><h3>⚠️ Εκπρόθεσμες</h3><div id="taskOverdueList"><small>Δεν υπάρχουν εκπρόθεσμες εργασίες.</small></div></div>
+<div class="card"><h3>📌 Σήμερα</h3><div id="taskTodayList"><small>Δεν υπάρχουν εργασίες για σήμερα.</small></div></div>
+<div class="card"><h3>⏳ Επόμενες</h3><div id="taskUpcomingList"><small>Δεν υπάρχουν επόμενες εργασίες.</small></div></div>
+<div class="card"><h3>🗓️ Ιστορικό / Ημερολόγιο</h3>
+<div class="grid"><div><small>Μήνας</small><input id="calMonth" type="month" onchange="loadCalendarHistory()"></div>
+<div><small>Τύπος εργασίας</small><select id="calType" onchange="loadCalendarHistory()"><option value="">Όλες οι εργασίες</option><option>Λίπανση</option><option>Ψεκασμός / Φυτοπροστασία</option><option>Πότισμα</option><option>Φύτευση</option><option>Κλάδεμα</option><option>Εργασία προσωπικού</option><option>Καθαρισμός</option><option>Συντήρηση</option><option>Άλλη εργασία</option></select></div></div>
+<button class="soft" onclick="loadCalendarHistory()">🔄 Ανανέωση ιστορικού</button>
 <div id="calendarList"><small>Δεν υπάρχουν εργασίες.</small></div>
 </div>
 </div><div id="page-reports" class="page"><div class="card"><div class="reportTitle"><h3 id="tReports">📊 Αναφορές & Στατιστικά</h3><button class="soft" style="width:auto" onclick="exportExcel()">📊 Εξαγωγή Excel</button><button class="soft" style="width:auto" onclick="exportPDF()">📄 Εξαγωγή PDF</button><button class="soft" style="width:auto" onclick="loadReports()">🔄</button></div>
@@ -1101,8 +1114,33 @@ async function loadReports(){
 
 async function photoUrl(path){if(!path)return '';const r=await sb.storage.from('activity-photos').createSignedUrl(path,3600);return r.error?'':r.data.signedUrl}
 async function showCalendarPhotos(){for(const el of document.querySelectorAll('[data-photo]')){const u=await photoUrl(el.dataset.photo);if(u)el.innerHTML=`<img src="${u}" alt="Φωτογραφία εργασίας" style="max-width:260px;width:100%;border-radius:10px;margin-top:8px">`;}}
-async function completeActivity(id){const {error}=await sb.from('activities').update({status:'completed',scheduled:false}).eq('id',id);if(error){alert(error.message);return}await dash();}
-async function loadCalendar(){
+async function completeActivity(id){
+ const {error}=await sb.from('activities').update({status:'completed',scheduled:false}).eq('id',id);
+ if(error){alert(error.message);return}
+ await Promise.all([dash(),loadCalendar()]);
+}
+function taskLocalYmd(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function taskCard(x){
+ const date=new Date(x.activity_date+'T12:00:00').toLocaleDateString('el-GR');
+ return `<div class="entry"><div class="entryText"><b>🌱 ${esc(x.activity_type)}</b><br><small>📆 ${date}${x.note?' • '+esc(x.note):''}</small>${x.photo_path?`<div data-photo="${x.photo_path}"><small>📸 Φόρτωση φωτογραφίας...</small></div>`:''}<button class="soft" style="margin-top:8px;width:auto" onclick="completeActivity(${x.id})">✅ Ολοκληρώθηκε</button></div><div class="entryActions"><button class="soft" onclick="editEntry('activity',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('activity',${x.id})">🗑️</button></div></div>`;
+}
+async function loadTaskCenter(){
+ const ids=['taskOverdueList','taskTodayList','taskUpcomingList'];
+ if(!ids.every(id=>document.getElementById(id)))return;
+ if(!gh.value){ids.forEach(id=>document.getElementById(id).innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>');return}
+ const r=await sb.from('activities').select('*').eq('greenhouse_id',gh.value).eq('status','pending').order('activity_date',{ascending:true});
+ if(r.error){ids.forEach(id=>document.getElementById(id).innerHTML='<small>Σφάλμα: '+esc(r.error.message)+'</small>');return}
+ const today=taskLocalYmd();
+ const overdue=(r.data||[]).filter(x=>x.activity_date<today);
+ const todayItems=(r.data||[]).filter(x=>x.activity_date===today);
+ const upcoming=(r.data||[]).filter(x=>x.activity_date>today);
+ taskOverdueCount.textContent=overdue.length.toLocaleString('el-GR');taskTodayCount.textContent=todayItems.length.toLocaleString('el-GR');taskUpcomingCount.textContent=upcoming.length.toLocaleString('el-GR');
+ taskOverdueList.innerHTML=overdue.length?overdue.map(taskCard).join(''):'<small>✅ Δεν υπάρχουν εκπρόθεσμες εργασίες.</small>';
+ taskTodayList.innerHTML=todayItems.length?todayItems.map(taskCard).join(''):'<small>Δεν υπάρχουν εργασίες για σήμερα.</small>';
+ taskUpcomingList.innerHTML=upcoming.length?upcoming.map(taskCard).join(''):'<small>Δεν υπάρχουν επόμενες εργασίες.</small>';
+ await showCalendarPhotos();
+}
+async function loadCalendarHistory(){
  if(!document.getElementById('calendarList'))return;
  if(!gh.value){calendarList.innerHTML='<small>Επίλεξε αγροτεμάχιο.</small>';return}
  let q=sb.from('activities').select('*').eq('greenhouse_id',gh.value).order('activity_date',{ascending:false});
@@ -1115,17 +1153,17 @@ async function loadCalendar(){
  }
  if(calType.value)q=q.eq('activity_type',calType.value);
  const r=await q;
- if(r.error){calendarList.innerHTML='<small>Σφάλμα: '+r.error.message+'</small>';return}
+ if(r.error){calendarList.innerHTML='<small>Σφάλμα: '+esc(r.error.message)+'</small>';return}
  if(!r.data.length){calendarList.innerHTML='<small>Δεν υπάρχουν εργασίες για τα φίλτρα που επέλεξες.</small>';return}
  let last='';
  calendarList.innerHTML=r.data.map(x=>{
    const date=new Date(x.activity_date+'T12:00:00').toLocaleDateString('el-GR');
-   const head=date!==last?`<div style="margin-top:14px"><b>📆 ${date}</b></div>`:'';
-   last=date;
-   return `${head}<div class="entry"><div class="entryText"><b>🌱 ${x.activity_type}</b> ${x.status==='pending'?'<span style="font-weight:bold">⏳ Εκκρεμεί</span>':'<span>✅ Ολοκληρώθηκε</span>'}<br><small>${x.note||'Χωρίς σημείωση'}</small>${x.photo_path?`<div data-photo="${x.photo_path}"><small>📸 Φόρτωση φωτογραφίας...</small></div>`:''}${x.status==='pending'?`<button class="soft" style="margin-top:8px;width:auto" onclick="completeActivity(${x.id})">✅ Ολοκληρώθηκε</button>`:''}</div><div class="entryActions"><button class="soft" onclick="editEntry('activity',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('activity',${x.id})">🗑️</button></div></div>`;
+   const head=date!==last?`<div style="margin-top:14px"><b>📆 ${date}</b></div>`:'';last=date;
+   return `${head}<div class="entry"><div class="entryText"><b>🌱 ${esc(x.activity_type)}</b> ${x.status==='pending'?'<span style="font-weight:bold">⏳ Εκκρεμεί</span>':'<span>✅ Ολοκληρώθηκε</span>'}<br><small>${esc(x.note||'Χωρίς σημείωση')}</small>${x.photo_path?`<div data-photo="${x.photo_path}"><small>📸 Φόρτωση φωτογραφίας...</small></div>`:''}${x.status==='pending'?`<button class="soft" style="margin-top:8px;width:auto" onclick="completeActivity(${x.id})">✅ Ολοκληρώθηκε</button>`:''}</div><div class="entryActions"><button class="soft" onclick="editEntry('activity',${x.id})">✏️</button><button class="danger" onclick="deleteEntry('activity',${x.id})">🗑️</button></div></div>`;
  }).join('');
  await showCalendarPhotos();
 }
+async function loadCalendar(){await Promise.all([loadTaskCenter(),loadCalendarHistory()]);}
 
 function quickEntry(type){
  if(!season.value){alert('Επίλεξε πρώτα καλλιεργητική περίοδο.');season.scrollIntoView({behavior:'smooth',block:'center'});return}
