@@ -17,7 +17,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.7 • Πρόβλεψη Παραγωγής + PIN</small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>v4.8 • Έξυπνες Ειδοποιήσεις + PIN</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
@@ -869,9 +869,14 @@ if(document.getElementById('dIncome')){
   if(document.getElementById('smartHomeStatus'))smartHomeStatus.innerHTML=(todayTasks.length||low.length||overdueCustomerTotal>0||overdueSupplierTotal>0)?'<small>Πάτησε σε μια κάρτα για να δεις λεπτομέρειες.</small>':'<small>✅ Δεν υπάρχει κάτι επείγον για σήμερα.</small>';
   const overdue=pending.filter(x=>x.activity_date&&x.activity_date<ymd(now));
   const dueTomorrow=pending.filter(x=>x.activity_date===ymd(tomorrow));
+  // v4.8: έξυπνες ειδοποιήσεις για σημερινές εργασίες και όριο προϋπολογισμού.
+  if(todayTasks.length)alerts.push(`<div class="dashAlert" onclick="showPage('calendar')">📅 Σήμερα: ${todayTasks.slice(0,3).map(x=>'<b>'+esc(x.activity_type)+'</b>').join(', ')}${todayTasks.length>3?' …':''}<br><small>Πάτησε για το Ημερολόγιο</small></div>`);
+  const budgetNow=budgetRead(Number(gh.value)),budgetLimit=Number(budgetNow.expenseTarget||0),budgetPct=budgetLimit?e/budgetLimit*100:0;
+  if(budgetLimit&&e>budgetLimit)alerts.push(`<div class="dashAlert" onclick="showPage('budget')">🔴 <b>Υπέρβαση προϋπολογισμού</b>: ${euro(e)} / ${euro(budgetLimit)} (${budgetPct.toLocaleString('el-GR',{maximumFractionDigits:1})}%)<br><small>Πάτησε για τον Προϋπολογισμό</small></div>`);
+  else if(budgetLimit&&budgetPct>=85)alerts.push(`<div class="dashAlert" onclick="showPage('budget')">🟠 <b>Πλησιάζεις το όριο κόστους</b>: ${euro(e)} / ${euro(budgetLimit)} (${budgetPct.toLocaleString('el-GR',{maximumFractionDigits:1})}%)<br><small>Πάτησε για τον Προϋπολογισμό</small></div>`);
   if(overdue.length)alerts.push(`<div class="dashAlert" onclick="showPage('calendar')">⚠️ <b>${overdue.length}</b> καθυστερημέν${overdue.length===1?'η εργασία':'ες εργασίες'}: ${overdue.slice(0,3).map(x=>esc(x.activity_type)).join(', ')}${overdue.length>3?' …':''}<br><small>Πάτησε για το Ημερολόγιο</small></div>`);
   if(dueTomorrow.length)alerts.push(`<div class="dashAlert" onclick="showPage('calendar')">⏳ Αύριο: ${dueTomorrow.slice(0,3).map(x=>'<b>'+esc(x.activity_type)+'</b>').join(', ')}${dueTomorrow.length>3?' …':''}<br><small>Πάτησε για το Ημερολόγιο</small></div>`);
-  if(pending.length&&!overdue.length&&!dueTomorrow.length)alerts.push(`<div class="dashAlert" onclick="showPage('calendar')">⏳ <b>${pending.length}</b> εκκρεμ${pending.length===1?'ής εργασία':'είς εργασίες'} στο επιλεγμένο αγροτεμάχιο.<br><small>Πάτησε για το Ημερολόγιο</small></div>`);
+  if(pending.length&&!overdue.length&&!dueTomorrow.length&&!todayTasks.length)alerts.push(`<div class="dashAlert" onclick="showPage('calendar')">⏳ <b>${pending.length}</b> εκκρεμ${pending.length===1?'ής εργασία':'είς εργασίες'} στο επιλεγμένο αγροτεμάχιο.<br><small>Πάτησε για το Ημερολόγιο</small></div>`);
   if(low.length)alerts.push(`<div class="dashAlert" onclick="showPage('inventory')">📦 Χαμηλό απόθεμα (≤ 5 μονάδες): ${low.slice(0,4).map(x=>esc(x.name)+' ('+Number(x.quantity).toLocaleString('el-GR')+' '+esc(x.unit)+')').join(', ')}${low.length>4?' …':''}<br><small>Πάτησε για την Αποθήκη</small></div>`);
   // v4.1.6: FIFO ανά παραστατικό/πώληση. Οι πληρωμές καλύπτουν πρώτα τις παλαιότερες χρεώσεις.
   const unpaidCustomers=[];
