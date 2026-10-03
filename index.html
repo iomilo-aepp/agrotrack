@@ -1,5 +1,5 @@
 <!doctype html><html lang="el"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GeoFylo v 5</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<title>GeoFylo v4.9.2</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
@@ -17,7 +17,7 @@ input,select,button{width:100%;padding:12px;margin:5px 0;border-radius:10px;bord
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icon-192.png">
 </head><body><div id="completionModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;padding:18px;overflow:auto"><div class="card" style="max-width:520px;margin:8vh auto;background:#fff"><h3>✅ Ολοκλήρωση εργασίας</h3><small>Δήλωσε το εφόδιο και την πραγματική ποσότητα που χρησιμοποιήθηκε. Αν δεν χρησιμοποιήθηκε εφόδιο, επίλεξε «Χωρίς εφόδιο».</small><label style="margin-top:14px">📦 Εφόδιο<select id="completionInventory" onchange="completionInventoryChanged()"><option value="">— Χωρίς εφόδιο —</option></select></label><div id="completionAvailable"><small>Επίλεξε εφόδιο για να δεις το διαθέσιμο απόθεμα.</small></div><label>Ποσότητα που χρησιμοποιήθηκε<input id="completionQty" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="π.χ. 2,5" disabled></label><div class="grid"><button class="soft" onclick="closeCompletionModal()">Ακύρωση</button><button id="confirmCompletionBtn" onclick="confirmActivityCompletion()">✅ Ολοκλήρωση εργασίας</button></div></div></div><div class="app">
-<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small></small><div class="card">
+<div id="auth"><h1 class="brand"><img src="./icon-192.png" alt="">GeoFylo</h1><small>Commercial v1.2 • 30 ημέρες δωρεάν + συνδρομή</small><div class="card">
 <div id="emailAuthBox"><h2 id="authTitle">Σύνδεση</h2><div id="nameBox" class="hidden"><input id="name" placeholder="Ονοματεπώνυμο"></div>
 <input id="email" type="email" placeholder="Email"><input id="pass" type="password" placeholder="Κωδικός (6+ χαρακτήρες)">
 <button onclick="submitAuth()" id="authBtn">Σύνδεση</button><button class="soft" onclick="toggleAuth()" id="toggleBtn">Δεν έχω λογαριασμό — Εγγραφή</button></div>
@@ -702,7 +702,39 @@ async function loadMySubscription(){
  const a=subscriptionAccess(s),days=subscriptionRemainingDays(s),end=a.end?new Date(a.end).toLocaleDateString('el-GR'):'—';
  const label=a.paid?'GeoFylo Pro':(a.trial?'Δωρεάν δοκιμή':'Χωρίς ενεργή συνδρομή');
  const status=a.ok?'🟢 Ενεργή':'🔴 Έληξε';
- box.innerHTML=`<div class="entry"><div class="entryText"><b>${status}</b><br><small>Πακέτο: <b>${esc(label)}</b></small><br><small>Πρόσβαση έως: <b>${esc(end)}</b></small><br><small>Υπόλοιπο: <b>${days} ${days===1?'ημέρα':'ημέρες'}</b></small></div></div>`;
+ box.innerHTML=`<div class="entry"><div class="entryText"><b>${status}</b><br><small>Πακέτο: <b>${esc(label)}</b></small><br><small>Πρόσβαση έως: <b>${esc(end)}</b></small><br><small>Υπόλοιπο: <b>${days} ${days===1?'ημέρα':'ημέρες'}</b></small></div></div>
+ <div style="margin-top:14px;padding-top:12px;border-top:1px solid #e5e7eb"><b>💳 Ανανέωση συνδρομής</b><br><small>Επίλεξε πακέτο και ολοκλήρωσε την πληρωμή με ασφάλεια μέσω Stripe.</small>
+ <div class="quickGrid" style="margin-top:10px">
+  <button onclick="startStripeCheckout(1)">1 μήνας — 9,90 €</button>
+  <button onclick="startStripeCheckout(3)">3 μήνες — 27 €</button>
+  <button onclick="startStripeCheckout(6)">6 μήνες — 49 €</button>
+  <button onclick="startStripeCheckout(12)">12 μήνες — 89 €</button>
+ </div><small id="stripeCheckoutMsg" style="display:block;margin-top:8px"></small></div>`;
+}
+const STRIPE_CHECKOUT_PLANS={
+ 1:'price_1UMLOyI4vp1ziwO7clxZ0mRR',
+ 3:'price_1UMLSVI4vp1ziwO7fEPzUIh0',
+ 6:'price_1UMLTtI4vp1ziwO7p6hDFPWC',
+ 12:'price_1UMLUPI4vp1ziwO7wKDfvFS6'
+};
+async function startStripeCheckout(months){
+ const msg=document.getElementById('stripeCheckoutMsg');
+ try{
+  if(!user)throw new Error('Δεν υπάρχει ενεργός χρήστης.');
+  const priceId=STRIPE_CHECKOUT_PLANS[Number(months)];
+  if(!priceId)throw new Error('Μη έγκυρο πακέτο.');
+  if(msg)msg.textContent='⏳ Μεταφορά στο Stripe Checkout...';
+  const session=(await sb.auth.getSession()).data.session;
+  if(!session?.access_token)throw new Error('Η συνεδρία έληξε. Συνδέσου ξανά.');
+  const res=await fetch('https://yaoumcvuzvzrdcnmpmhv.supabase.co/functions/v1/create-stripe-checkout',{
+   method:'POST',
+   headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':'sb_publishable_N9tUlIyCPO9wgPg42MsppQ__PRnSuax'},
+   body:JSON.stringify({priceId,userId:user.id,months:Number(months)})
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok||!data.url)throw new Error(data.error||'Δεν δημιουργήθηκε η σελίδα πληρωμής.');
+  location.href=data.url;
+ }catch(e){if(msg)msg.textContent='❌ '+(e?.message||'Σφάλμα Stripe Checkout');else alert('❌ '+(e?.message||'Σφάλμα Stripe Checkout'));}
 }
 async function loadProfile(){
  updatePinSettingsUI();
