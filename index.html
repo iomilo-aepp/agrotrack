@@ -502,7 +502,7 @@ function subscriptionAccess(s){
  const status=String(s?.status||'').toLowerCase();
  const trialEnd=s?.trial_ends_at?new Date(s.trial_ends_at).getTime():0;
  const subEnd=s?.subscription_ends_at?new Date(s.subscription_ends_at).getTime():0;
- // Commercial v1.6.1: an explicit expired/disabled state always blocks access,
+ // Commercial v1.6.2: an explicit expired/disabled state always blocks access,
  // even if an old trial date is still in the future.
  if(status==='expired'||status==='disabled')return {ok:false,paid:false,trial:false,end:Math.max(subEnd,trialEnd,0)};
  const paid=status==='active' && subEnd>now;
@@ -545,7 +545,7 @@ async function loadAdminSubscriptions(){
  const stats=document.getElementById('adminStats');if(stats)stats.innerHTML=`<div class="grid"><div><small>Ενεργοί συνδρομητές</small><br><b>${active}</b></div><div><small>Καταγεγραμμένα έσοδα</small><br><b>${euro(total)}</b></div></div>`;
  if(!rows.length){box.innerHTML='<small>Δεν υπάρχουν συνδρομές.</small>';return}
  const planPrices=Object.fromEntries(plans.map(p=>[Number(p.months),Number(p.price)]));
- box.innerHTML=rows.map(x=>`<div class="card" style="margin:10px 0;padding:14px"><b>${esc(x.full_name||x.email||'Χρήστης')}</b><br><small>${esc(x.email||'')}</small><div style="margin-top:8px"><b>${adminStatusLabel(x)}</b> • Πακέτο: ${esc(x.plan||'—')}</div><small>Trial έως: ${adminDate(x.trial_ends_at)} • Συνδρομή έως: ${adminDate(x.subscription_ends_at)}</small><div class="quickGrid" style="margin-top:10px"><button onclick="openSubscriptionPayment('${x.user_id}',1,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}',planPrices[1])">+1 μήνα</button><button onclick="openSubscriptionPayment('${x.user_id}',3,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}',planPrices[3])">+3 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',6,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}',planPrices[6])">+6 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',12,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}',planPrices[12])">+12 μήνες</button><button class="soft" onclick="adminEditSubscription('${x.user_id}','${esc(x.plan||'trial')}','${esc(x.status||'trial')}','${x.subscription_ends_at||''}')">✏️ Επεξεργασία</button><button class="danger" onclick="adminDeleteSubscription('${x.user_id}','${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">🗑️ Διαγραφή</button></div></div>`).join('');
+ box.innerHTML=rows.map(x=>`<div class="card" style="margin:10px 0;padding:14px"><b>${esc(x.full_name||x.email||'Χρήστης')}</b><br><small>${esc(x.email||'')}</small><div style="margin-top:8px"><b>${adminStatusLabel(x)}</b> • Πακέτο: ${esc(x.plan||'—')}</div><small>Trial έως: ${adminDate(x.trial_ends_at)} • Συνδρομή έως: ${adminDate(x.subscription_ends_at)}</small><div class="quickGrid" style="margin-top:10px"><button onclick="openSubscriptionPayment('${x.user_id}',1,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}',planPrices[1])">+1 μήνα</button><button onclick="openSubscriptionPayment('${x.user_id}',3,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}',planPrices[3])">+3 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',6,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}',planPrices[6])">+6 μήνες</button><button onclick="openSubscriptionPayment('${x.user_id}',12,'${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}',planPrices[12])">+12 μήνες</button><button class="soft" onclick="adminEditSubscription('${x.user_id}','${esc(x.plan||'trial')}','${esc(x.status||'trial')}','${x.subscription_ends_at||''}')">✏️ Επεξεργασία</button><button class="danger" onclick="adminDeleteSubscription('${x.user_id}','${esc((x.full_name||x.email||'Χρήστης').replace(/'/g,'&#39;'))}')">⛔ Απενεργοποίηση</button></div></div>`).join('');
  renderAdminPaymentHistory(payments,rows);
 }
 function openSubscriptionPayment(uid,months,name,planPrice){
@@ -592,8 +592,13 @@ async function adminEditSubscription(uid,plan,status,end){
  if(r.error){alert('❌ '+r.error.message);return} await loadAdminSubscriptions();
 }
 async function adminDeleteSubscription(uid,name){
- if(!confirm(`Διαγραφή της συνδρομής του ${name};\n\nΔεν διαγράφεται ο λογαριασμός ή τα δεδομένα παραγωγής.`))return;
- const r=await sb.rpc('admin_delete_subscription',{target_user_id:uid});if(r.error){alert('❌ '+r.error.message);return} await loadAdminSubscriptions();
+ // Commercial v1.6.2: never physically delete the subscription row.
+ // A missing row means a genuinely new user and is the only case that can receive a trial.
+ if(!confirm(`Απενεργοποίηση της συνδρομής του ${name};\n\nΟ λογαριασμός και όλα τα δεδομένα παραγωγής παραμένουν ασφαλή. Δεν θα δημιουργηθεί νέο trial.`))return;
+ const r=await sb.rpc('admin_update_subscription',{target_user_id:uid,new_plan:'pro',new_status:'disabled',new_end:null});
+ if(r.error){alert('❌ '+r.error.message);return}
+ alert('✅ Η συνδρομή απενεργοποιήθηκε χωρίς να διαγραφεί η εγγραφή.');
+ await loadAdminSubscriptions();
 }
 async function adminEditPayment(id,amount,date,method,note){
  const a=prompt('Ποσό (€):',String(amount));if(a===null)return;const n=Number(String(a).replace(',','.'));if(!Number.isFinite(n)||n<0){alert('Μη έγκυρο ποσό.');return}
@@ -616,7 +621,7 @@ async function enter(u){
   await loadSeasons();entryFields();
  }catch(e){console.error(e);msg.textContent=e.message;main.classList.add('hidden');auth.classList.remove('hidden')}
 }
-// Commercial v1.6.1: while the app remains open, re-check subscription periodically.
+// Commercial v1.6.2: while the app remains open, re-check subscription periodically.
 setInterval(async()=>{if(user && !main.classList.contains('hidden')){try{await verifySubscriptionGate()}catch(e){console.error('Periodic subscription gate:',e)}}},60000);
 async function logout(){
   // With PIN enabled, Logout acts as an app lock: keep the Supabase session and PIN.
