@@ -430,7 +430,15 @@ function addTabRefreshButtons(){
  const names=['entry','movements','calendar','reports','customers','payments','inventory','suppliers','cashflow','profile'];
  names.forEach(n=>{const p=document.getElementById('page-'+n);if(!p||p.querySelector(':scope > .tabRefresh'))return;const b=document.createElement('button');b.className='soft tabRefresh';b.type='button';b.innerHTML='🔄 Ανανέωση';b.onclick=()=>refreshTab(n,b);p.prepend(b);});
 }
-function showPage(n){document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.bottomNav button').forEach(e=>e.classList.remove('active'));document.getElementById('page-'+n)?.classList.add('active');document.getElementById('nav-'+n)?.classList.add('active');if(n==='home')dash();if(n==='movements')dash();if(n==='calendar')loadCalendar();if(n==='reports')loadReports();if(n==='profile')loadProfile();if(n==='customers')loadCustomers();if(n==='payments')loadPayments();if(n==='inventory')loadInventory();if(n==='suppliers')loadSuppliers();if(n==='cashflow')loadCashflow();if(n==='budget')loadBudget();if(n==='admin')loadAdminSubscriptions();window.scrollTo({top:0,behavior:'smooth'});}
+async function verifySubscriptionGate(){
+ if(!user)return false;
+ const q=await sb.from('subscriptions').select('*').eq('user_id',user.id).maybeSingle();
+ if(q.error){console.error('Subscription gate:',q.error);return false}
+ if(!q.data){const sub=await ensureSubscription(user);if(!subscriptionAccess(sub).ok){showSubscriptionExpired(sub);return false}return true}
+ if(!subscriptionAccess(q.data).ok){showSubscriptionExpired(q.data);return false}
+ return true;
+}
+async function showPage(n){if(!(await verifySubscriptionGate()))return;document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));document.querySelectorAll('.bottomNav button').forEach(e=>e.classList.remove('active'));document.getElementById('page-'+n)?.classList.add('active');document.getElementById('nav-'+n)?.classList.add('active');if(n==='home')dash();if(n==='movements')dash();if(n==='calendar')loadCalendar();if(n==='reports')loadReports();if(n==='profile')loadProfile();if(n==='customers')loadCustomers();if(n==='payments')loadPayments();if(n==='inventory')loadInventory();if(n==='suppliers')loadSuppliers();if(n==='cashflow')loadCashflow();if(n==='budget')loadBudget();if(n==='admin')loadAdminSubscriptions();window.scrollTo({top:0,behavior:'smooth'});}
 
 const I18N={
  el:{quick:'🌱 Γρήγορη καταχώρηση',choose:'Επίλεξε τι θέλεις να καταχωρήσεις',expense:'💶 Έξοδο',harvest:'⚖️ Συγκομιδή',sale:'💰 Πώληση',activity:'📅 Εργασία',voice:'🎤 Πες το με τη φωνή',current:'Τρέχουσα επιλογή',reports:'📊 Αναφορές & Στατιστικά',calendar:'📅 Ημερολόγιο Καλλιέργειας',newEntry:'Νέα καταχώρηση'},
@@ -491,11 +499,15 @@ async function ensureSubscription(u){
 }
 function subscriptionAccess(s){
  const now=Date.now();
+ const status=String(s?.status||'').toLowerCase();
  const trialEnd=s?.trial_ends_at?new Date(s.trial_ends_at).getTime():0;
  const subEnd=s?.subscription_ends_at?new Date(s.subscription_ends_at).getTime():0;
- const paid=(s?.status==='active' || s?.plan!=='trial') && subEnd>now;
- const trial=(s?.status==='trial' || s?.plan==='trial') && trialEnd>now;
- return {ok:paid||trial,paid,trial,end:paid?subEnd:trialEnd};
+ // Commercial v1.6.1: an explicit expired/disabled state always blocks access,
+ // even if an old trial date is still in the future.
+ if(status==='expired'||status==='disabled')return {ok:false,paid:false,trial:false,end:Math.max(subEnd,trialEnd,0)};
+ const paid=status==='active' && subEnd>now;
+ const trial=status==='trial' && trialEnd>now;
+ return {ok:paid||trial,paid,trial,end:paid?subEnd:(trial?trialEnd:Math.max(subEnd,trialEnd,0))};
 }
 function showSubscriptionExpired(s){
  auth.classList.add('hidden');main.classList.remove('hidden');who.textContent=user?.user_metadata?.full_name||user?.email||'';
@@ -506,7 +518,7 @@ function showSubscriptionExpired(s){
  page.classList.add('active');
  const end=s?.subscription_ends_at||s?.trial_ends_at;
  const d=end?new Date(end).toLocaleDateString('el-GR'):'—';
- page.innerHTML=`<div class="card" style="max-width:620px;margin:24px auto;text-align:center"><h2>🔒 Η πρόσβαση στο GeoFylo έληξε</h2><p>Η δοκιμαστική περίοδος ή η συνδρομή σου έληξε στις <b>${esc(d)}</b>.</p><p>Για ανανέωση συνδρομής επικοινώνησε με το GeoFylo.</p><button class="soft" onclick="logout()">🔒 Έξοδος / Κλείδωμα</button></div>`;
+ page.innerHTML=`<div class="card" style="max-width:620px;margin:24px auto;text-align:center"><h2>🔒 Η συνδρομή σας έχει λήξει</h2><p>Η δοκιμαστική περίοδος ή η συνδρομή σας έληξε στις <b>${esc(d)}</b>.</p><p>Τα δεδομένα σας παραμένουν ασφαλή. Επιλέξτε πακέτο για να συνεχίσετε να χρησιμοποιείτε το GeoFylo.</p><div class="quickGrid" style="margin-top:14px"><button onclick="startStripeCheckout(1)">1 μήνας — 9,90 €</button><button onclick="startStripeCheckout(3)">3 μήνες — 27 €</button><button onclick="startStripeCheckout(6)">6 μήνες — 49 €</button><button onclick="startStripeCheckout(12)">12 μήνες — 89 €</button></div><small id="stripeCheckoutMsg" style="display:block;margin-top:10px"></small><button class="soft" style="margin-top:14px" onclick="logout()">🔒 Έξοδος / Κλείδωμα</button></div>`;
  const nav=main.querySelector('.bottomNav');if(nav)nav.classList.add('hidden');
 }
 async function setupAdminUI(){
@@ -604,6 +616,8 @@ async function enter(u){
   await loadSeasons();entryFields();
  }catch(e){console.error(e);msg.textContent=e.message;main.classList.add('hidden');auth.classList.remove('hidden')}
 }
+// Commercial v1.6.1: while the app remains open, re-check subscription periodically.
+setInterval(async()=>{if(user && !main.classList.contains('hidden')){try{await verifySubscriptionGate()}catch(e){console.error('Periodic subscription gate:',e)}}},60000);
 async function logout(){
   // With PIN enabled, Logout acts as an app lock: keep the Supabase session and PIN.
   // This lets the producer reopen/unlock GeoFylo with only the 4-digit PIN.
